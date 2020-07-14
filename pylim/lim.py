@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import re
 import time
+import datetime
 from lxml import etree
 import requests
 from functools import lru_cache
@@ -20,7 +21,7 @@ lim_schema_futurues_url = '{}/rs/api/schema/relations/<SYMBOL>?showChildren=true
 calltries = 50
 sleep = 2.5
 
-curyear = pd.datetime.now().year
+curyear = datetime.datetime.now().year
 prevyear = curyear - 1
 
 headers = {
@@ -174,12 +175,12 @@ def series(symbols):
 
 def build_let_show_when_helper(lets, shows, whens):
     query = '''
-            LET
-            {0}
-            SHOW
-            {1}
-            WHEN
-            {2}
+LET
+    {0}
+SHOW
+    {1}
+WHEN
+    {2}
         '''.format(lets, shows, whens)
     return query
 
@@ -192,6 +193,9 @@ def build_curve_history_query(symbols, column='Close', curve_dates=None):
     :param curve_dates:
     :return:
     """
+
+    if not isinstance(curve_dates, list):
+        curve_dates = [curve_dates]
 
     lets, shows, whens = '', '', ''
     counter = 0
@@ -238,6 +242,11 @@ def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=No
         for symbol in symbols:
             curve_formula = curve_formula.replace(symbol, 'x%s' % (symbol))
         shows += curve_formula
+
+    if curve_date is None: # when no curve date is specified we get a full history so trim
+        last_bus_day = (datetime.datetime.now() - pd.tseries.offsets.BDay(1)).strftime('%m/%d/%Y')
+        whens = '{ %s } and date is after %s' % (whens, last_bus_day)
+
     return build_let_show_when_helper(lets, shows, whens)
 
 
@@ -248,7 +257,7 @@ def curve(symbols, column='Close', curve_dates=None, curve_formula=None):
     if isinstance(scall, dict):
         scall = list(scall.keys())
 
-    if curve_dates is not None and isinstance(curve_dates, list) and len(curve_dates) > 1:
+    if curve_formula is None and curve_dates is not None:
         q = build_curve_history_query(scall, column, curve_dates)
     else:
         q = build_curve_query(scall, column, curve_dates, curve_formula=curve_formula)
@@ -257,13 +266,10 @@ def curve(symbols, column='Close', curve_dates=None, curve_formula=None):
     if isinstance(symbols, dict):
         res = res.rename(columns=symbols)
 
-    # only keep the current forward curve, discard history
-    if res is not None and len(res) > 0:
-        res = res['{}-{}'.format(pd.datetime.now().year, pd.datetime.now().month):]
-        # reindex dates to start of month
-        res = res.resample('MS').mean()
-        res = res.dropna(how='any') # only keep months where we have values for all
-        return res
+    # reindex dates to start of month
+    res = res.resample('MS').mean()
+
+    return res
 
 
 def curve_formula(curve_formula, column='Close', curve_dates=None, valid_symbols=None):
@@ -291,6 +297,7 @@ def curve_formula(curve_formula, column='Close', curve_dates=None, valid_symbols
                 dfs.append(rx)
         if len(dfs) > 0:
             res = pd.concat(dfs, 1)
+            res = res.dropna(how='all', axis=0)
 
     return res
 

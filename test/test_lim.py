@@ -53,7 +53,8 @@ class TestLim(unittest.TestCase):
         self.assertIn('Brent', res.columns)
 
         res = lim.curve('FB', curve_dates=pd.to_datetime('2020-03-17'))
-        self.assertIn('FB', res.columns)
+        self.assertEqual(res['2020/03/17']['2020-05-01'], 28.73)
+        self.assertEqual(res['2020/03/17']['2020-08-01'], 33.25)
 
     def test_curve2(self):
         res = lim.curve({'FP': 'GO', 'FB': 'Brent'}, curve_formula='Show 1: FP/7.45-FB')
@@ -77,6 +78,8 @@ class TestLim(unittest.TestCase):
         res = lim.curve_formula(curve_formula='Show 1: FP/7.45-FB', curve_dates=cd, valid_symbols=['FP', 'FB'])
         self.assertIn('2020/02/02', res.columns)
         self.assertIn('2020/04/04', res.columns)
+        self.assertEqual(res['2020/02/02']['2020-05-01'], 10.929)
+        self.assertEqual(res['2020/04/04']['2020-08-01'], 8.50930)
 
     def test_symbol_contracts(self):
         res = lim.get_symbol_contract_list('FB', monthly_contracts_only=True)
