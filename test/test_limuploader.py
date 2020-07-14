@@ -9,7 +9,7 @@ from datetime import datetime
 class TestLimUploader(unittest.TestCase):
 
     def test_upload_series(self):
-        r1, r2 = random(), random()
+        r1, r2 = round(random(), 2), round(random(), 2)
         dn = datetime.now().date()
         columns = ['TopRelation:Test:SPOTPRICE;TopColumn:Price:Close', 'TopRelation:Test:SPOTPRICE2']
         data = {columns[0]: r1, columns[1]: r2}
