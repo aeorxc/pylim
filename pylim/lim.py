@@ -290,6 +290,8 @@ def curve_formula(curve_formula, column='Close', curve_dates=None, valid_symbols
         res = curve(matches, column=column, curve_formula=curve_formula)
     else:
         dfs, res = [], None
+        if not isinstance(curve_dates, list):
+            curve_dates = [curve_dates]
         for d in curve_dates:
             rx = curve(matches, column=column, curve_dates=d, curve_formula=curve_formula)
             if rx is not None:
