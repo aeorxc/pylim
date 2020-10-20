@@ -1,4 +1,4 @@
-import pandas as pd, os
+import pandas as pd
 from pylim import lim
 import unittest
 
@@ -17,7 +17,7 @@ class TestLim(unittest.TestCase):
         LET
         FP = FP(ROLLOVER_DATE = "5 days before expiration day",ROLLOVER_POLICY = "actual prices")
         FP_M2 = FP(ROLLOVER_DATE = "5 days before expiration day",ROLLOVER_POLICY = "2 nearby actual prices")
-        
+
         SHOW
         FP: FP
         FP_02: FP_M2
@@ -92,7 +92,6 @@ class TestLim(unittest.TestCase):
 
     def test_cont_futures_rollover(self):
         res = lim.continuous_futures_rollover('FB', months=['M1', 'M12'], after_date=2019)
-        print(res.head())
         self.assertEqual(res['M1'][pd.to_datetime('2020-01-02')], 66.25)
         self.assertEqual(res['M12'][pd.to_datetime('2020-01-02')], 60.94)
 
@@ -120,6 +119,17 @@ class TestLim(unittest.TestCase):
         self.assertEqual(m.loc['column_starts'][0][0], pd.to_datetime('1979-09-03'))
         self.assertEqual(m.loc['column_starts'][0][1], pd.to_datetime('2011-01-31'))
         self.assertEqual(m.loc['column_starts'][0][2], pd.to_datetime('1979-09-03'))
+
+    def test_navigate_lim_tree(self):
+        symbol = 'TopRelation:Futures:Cboe'
+        res = lim.navigate_lim_tree(symbol)
+        self.assertIn('description="CBOE: Volatility Index (VIX) Futures"', res)
+
+    def test_find_symbols_in_path(self):
+        path = 'TopRelation:Futures:Ipe'
+        res = lim.find_symbols_in_path(path)
+        self.assertIn('WI_Q21', res)
+        self.assertIn('FB', res)
 
 
 if __name__ == '__main__':

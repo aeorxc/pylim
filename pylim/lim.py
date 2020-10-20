@@ -333,9 +333,9 @@ def futures_contracts(symbol, start_year=curyear, end_year=curyear+2):
 
 
 @lru_cache(maxsize=None)
-def get_symbol_contract_list(symbol, monthly_contracts_only=False):
+def navigate_lim_tree(symbol):
     """
-    Given a symbol pull all futurues contracts related to it
+    Given a symbol call API to get Tree Relations
     :param symbol:
     :return:
     """
@@ -343,14 +343,55 @@ def get_symbol_contract_list(symbol, monthly_contracts_only=False):
     resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies)
 
     if resp.status_code == 200:
-        root = etree.fromstring(resp.text.encode('utf-8'))
+        return resp.text
+    else:
+        logging.error('Received response: Code: {} Msg: {}'.format(resp.status_code, resp.text))
+        raise Exception(resp.text)
+
+
+@lru_cache(maxsize=None)
+def find_symbols_in_path(path):
+    """
+    Given a path in the LIM tree hierarchy, find all symbols in that path
+    :param path:
+    :return:
+    """
+    symbols = []
+    resp = navigate_lim_tree(path)
+    root = etree.fromstring(resp.encode('utf-8'))
+
+    names = [x.attrib['name'] for x in root[0][0]]
+    types = [x.attrib['type'] for x in root[0][0]]
+    haschildren = [x.attrib['hasChildren'] for x in root[0][0]]
+
+    for child in names:
+        if types[names.index(child)] == 'FUTURES':
+            symbols.append(child)
+        if types[names.index(child)] == 'NORMAL':
+            symbols.append(child)
+        if types[names.index(child)] == 'CATEGORY':
+            if haschildren[names.index(child)] == '1':
+                rec_symbols = find_symbols_in_path('%s:%s' % (path, child))
+                symbols = symbols + rec_symbols
+
+    return symbols
+
+
+@lru_cache(maxsize=None)
+def get_symbol_contract_list(symbol, monthly_contracts_only=False):
+    """
+    Given a symbol pull all futurues contracts related to it
+    :param symbol:
+    :return:
+    """
+
+    resp = navigate_lim_tree(symbol)
+    if resp is not None:
+        root = etree.fromstring(resp.encode('utf-8'))
         contracts = [x.attrib['name'] for x in root[0][0]]
         if monthly_contracts_only:
             contracts = [x for x in contracts if re.findall('\d\d\d\d\w', x) ]
         return contracts
-    else:
-        logging.error('Received response: Code: {} Msg: {}'.format(resp.status_code, resp.text))
-        raise Exception(resp.text)
 
 
 @lru_cache(maxsize=None)
