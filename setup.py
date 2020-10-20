@@ -1,9 +1,8 @@
 import setuptools
-import os
 
 setuptools.setup(
     name="pylim",
-    version="1.0.7",
+    version="1.0.9",
     author="aeorxc",
     author_email="author@example.com",
     description="wrapper around morningstar commodity (LIM)",
