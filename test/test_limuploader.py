@@ -21,8 +21,8 @@ class TestLimUploader(unittest.TestCase):
 
         limuploader.upload_series(df, dfmeta)
         df = lim.series(['SPOTPRICE', 'SPOTPRICE2'])
-        self.assertAlmostEquals(df.loc[dn.strftime('%y-%m-%d')]['SPOTPRICE'], r1, 2)
-        self.assertAlmostEquals(df.loc[dn.strftime('%y-%m-%d')]['SPOTPRICE2'], r2, 2)
+        self.assertAlmostEquals(df.loc[dn.strftime('%Y-%m-%d')]['SPOTPRICE'], r1, 2)
+        self.assertAlmostEquals(df.loc[dn.strftime('%Y-%m-%d')]['SPOTPRICE2'], r2, 2)
 
 
 if __name__ == '__main__':

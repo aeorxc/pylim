@@ -95,12 +95,6 @@ class TestLim(unittest.TestCase):
         self.assertEqual(res['M1'][pd.to_datetime('2020-01-02')], 66.25)
         self.assertEqual(res['M12'][pd.to_datetime('2020-01-02')], 60.94)
 
-    def test_pra_symbol(self):
-        self.assertFalse(lim.check_pra_symbol('FB'))
-        self.assertTrue(lim.check_pra_symbol('AAGXJ00'))
-        self.assertTrue(lim.check_pra_symbol('PGACR00'))
-        self.assertTrue(lim.check_pra_symbol('PA0005643.6.0'))
-
     def test_metadata(self):
         symbols = 'PCAAS00'
         m = lim.metadata(symbols)

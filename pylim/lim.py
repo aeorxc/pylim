@@ -8,6 +8,8 @@ import requests
 from functools import lru_cache
 import logging
 import hashlib
+from pylim import limutils
+from pylim import limqueryutils
 
 
 limServer = os.environ['LIMSERVER'].replace('"', '')
@@ -34,28 +36,10 @@ proxies = {
 }
 
 
-def alternate_col_val(values, noCols):
-    for x in range(0, len(values), noCols):
-        yield values[x:x + noCols]
-
-
 def query_hash(query):
     r = hashlib.md5(query.encode()).hexdigest()
     rf = '{}.h5'.format(r)
     return rf
-
-
-def build_dataframe(reports):
-    columns = [x.text for x in reports.iter(tag='ColumnHeadings')]
-    dates = [x.text for x in reports.iter(tag='RowDates')]
-    if len(columns) == 0 or len(dates) == 0:
-        return # no data, return`1
-
-    values = [float(x.text) for x in reports.iter(tag='Values')]
-    values = list(alternate_col_val(values, len(columns)))
-
-    df = pd.DataFrame(values, columns=columns, index=pd.to_datetime(dates))
-    return df
 
 
 def query_cached(q):
@@ -100,7 +84,7 @@ def query(q, id=None, tries=calltries, cache_inc=False):
         root = etree.fromstring(resp.text.encode('utf-8'))
         reqStatus = int(root.attrib['status'])
         if reqStatus == 100:
-            res = build_dataframe(root[0])
+            res = limutils.build_dataframe(root[0])
             return res
         elif reqStatus == 130:
             logging.info('No data')
@@ -116,31 +100,11 @@ def query(q, id=None, tries=calltries, cache_inc=False):
         raise Exception(resp.text)
 
 
-def check_pra_symbol(symbol):
-    """
-    Check if this is a Platts or Argus Symbol
-    :param symbol:
-    :return:
-    """
-    # Platts
-    if len(symbol) == 7 and symbol[:2] in [
-        'PC', 'PA', 'AA', 'PU', 'F1', 'PH', 'PJ', 'PG', 'PO', 'PP', ]:
-        return True
-
-    # Argus
-    if '.' in symbol:
-        sm = symbol.split('.')[0]
-        if len(sm) == 9 and sm.startswith('PA'):
-            return True
-
-    return False
-
-
 def build_series_query(symbols):
     q = 'Show \n'
     for symbol in symbols:
         qx = '{}: {}\n'.format(symbol, symbol)
-        if check_pra_symbol(symbol):
+        if limutils.check_pra_symbol(symbol):
             meta = metadata(tuple(symbols))
             meta = meta[symbol]
             r = dict(zip(meta['columns'], meta['column_starts']))
@@ -173,83 +137,6 @@ def series(symbols):
     return res
 
 
-def build_let_show_when_helper(lets, shows, whens):
-    query = '''
-LET
-    {0}
-SHOW
-    {1}
-WHEN
-    {2}
-        '''.format(lets, shows, whens)
-    return query
-
-
-def build_curve_history_query(symbols, column='Close', curve_dates=None):
-    """
-    Build query for single symbol and multiple curve dates
-    :param symbols:
-    :param column:
-    :param curve_dates:
-    :return:
-    """
-
-    if not isinstance(curve_dates, list):
-        curve_dates = [curve_dates]
-
-    lets, shows, whens = '', '', ''
-    counter = 0
-    for curve_date in curve_dates:
-        counter += 1
-        curve_date_str, curve_date_str_nor = curve_date.strftime("%m/%d/%Y"), curve_date.strftime("%Y/%m/%d")
-
-        inc_or = ''
-        if len(curve_dates) > 1 and counter != len(curve_dates):
-            inc_or = 'OR'
-        lets += 'ATTR x{0} = forward_curve({1},"{2}","{3}","","","days","",0 day ago)\n'.format(counter, symbols[0], column, curve_date_str)
-        shows += '{0}: x{1}\n'.format(curve_date_str_nor, counter)
-        whens += 'x{0} is DEFINED {1}\n'.format(counter, inc_or)
-    return build_let_show_when_helper(lets, shows, whens)
-
-
-def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=None):
-    """
-    Build query for multiple symbols and single curve dates
-    :param symbols:
-    :param column:
-    :param curve_date:
-    :param curve_formula:
-    :return:
-    """
-    lets, shows, whens = '', '', ''
-    counter = 0
-
-    for symbol in symbols:
-        counter += 1
-        curve_date_str = "LAST" if curve_date is None else curve_date.strftime("%m/%d/%Y")
-
-        inc_or = ''
-        if len(symbols) > 1 and counter != len(symbols):
-            inc_or = 'OR'
-
-        lets += 'ATTR x{1} = forward_curve({1},"{2}","{3}","","","days","",0 day ago)\n'.format(counter, symbol, column, curve_date_str)
-        shows += '{0}: x{0}\n'.format(symbol)
-        whens += 'x{0} is DEFINED {1}\n'.format(symbol, inc_or)
-
-    if curve_formula is not None:
-        if 'Show' in curve_formula or 'show' in curve_formula:
-            curve_formula = curve_formula.replace('Show', '').replace('show', '')
-        for symbol in symbols:
-            curve_formula = curve_formula.replace(symbol, 'x%s' % (symbol))
-        shows += curve_formula
-
-    if curve_date is None: # when no curve date is specified we get a full history so trim
-        last_bus_day = (datetime.datetime.now() - pd.tseries.offsets.BDay(1)).strftime('%m/%d/%Y')
-        whens = '{ %s } and date is after %s' % (whens, last_bus_day)
-
-    return build_let_show_when_helper(lets, shows, whens)
-
-
 def curve(symbols, column='Close', curve_dates=None, curve_formula=None):
     scall = symbols
     if isinstance(scall, str):
@@ -258,9 +145,9 @@ def curve(symbols, column='Close', curve_dates=None, curve_formula=None):
         scall = list(scall.keys())
 
     if curve_formula is None and curve_dates is not None:
-        q = build_curve_history_query(scall, column, curve_dates)
+        q = limqueryutils.build_curve_history_query(scall, column, curve_dates)
     else:
-        q = build_curve_query(scall, column, curve_dates, curve_formula=curve_formula)
+        q = limqueryutils.build_curve_query(scall, column, curve_dates, curve_formula=curve_formula)
     res = query(q)
 
     if isinstance(symbols, dict):
@@ -304,22 +191,8 @@ def curve_formula(curve_formula, column='Close', curve_dates=None, valid_symbols
     return res
 
 
-def build_continuous_futures_rollover_query(symbol, months=['M1'], rollover_date='5 days before expiration day', after_date=prevyear):
-    lets, shows, whens = '', '', 'Date is after {}\n'.format(after_date)
-    for month in months:
-        m = int(month[1:])
-        if m == 1:
-            rollover_policy = 'actual prices'
-        else:
-            rollover_policy = '{} nearby actual prices'.format(m)
-        lets += 'M{1} = {0}(ROLLOVER_DATE = "{2}",ROLLOVER_POLICY = "{3}")\n '.format(symbol, m, rollover_date, rollover_policy)
-        shows += 'M{0}: M{0} \n '.format(m)
-
-    return build_let_show_when_helper(lets, shows, whens)
-
-
 def continuous_futures_rollover(symbol, months=['M1'], rollover_date='5 days before expiration day', after_date=prevyear):
-    q = build_continuous_futures_rollover_query(symbol, months=months, rollover_date=rollover_date, after_date=after_date)
+    q = limqueryutils.build_continuous_futures_rollover_query(symbol, months=months, rollover_date=rollover_date, after_date=after_date)
     res = query(q)
     return res
 
