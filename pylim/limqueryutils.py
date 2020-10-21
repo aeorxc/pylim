@@ -1,5 +1,6 @@
 import datetime
 import pandas as pd
+from pylim import limutils
 
 curyear = datetime.datetime.now().year
 prevyear = curyear - 1
@@ -15,6 +16,28 @@ WHEN
     {2}
         '''.format(lets, shows, whens)
     return query
+
+
+def build_series_query(symbols, metadata=None):
+    q = 'Show \n'
+    for symbol in symbols:
+        qx = '{}: {}\n'.format(symbol, symbol)
+        if limutils.check_pra_symbol(symbol):
+            use_high_low = False
+            if metadata is not None:
+                meta = metadata[symbol]
+                r = dict(zip(meta['columns'], meta['column_starts']))
+                if 'Low' in r and 'High' in r:
+
+                    if 'Close' in r and r['Low'] < r['Close']:
+                        use_high_low = True
+                    if 'MidPoint' in r and r['Low'] < r['MidPoint']:
+                        use_high_low = True
+            if use_high_low:
+                qx = '%s: (High of %s + Low of %s)/2 \n' % (symbol, symbol, symbol)
+
+        q += qx
+    return q
 
 
 def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=None):

@@ -100,27 +100,6 @@ def query(q, id=None, tries=calltries, cache_inc=False):
         raise Exception(resp.text)
 
 
-def build_series_query(symbols):
-    q = 'Show \n'
-    for symbol in symbols:
-        qx = '{}: {}\n'.format(symbol, symbol)
-        if limutils.check_pra_symbol(symbol):
-            meta = metadata(tuple(symbols))
-            meta = meta[symbol]
-            r = dict(zip(meta['columns'], meta['column_starts']))
-            if 'Low' in r and 'High' in r:
-                use_high_low = False
-                if 'Close' in r and r['Low'] < r['Close']:
-                    use_high_low = True
-                if 'MidPoint' in r and r['Low'] < r['MidPoint']:
-                    use_high_low = True
-                if use_high_low:
-                    qx = '%s: (High of %s + Low of %s)/2 \n' % (symbol, symbol, symbol)
-
-        q += qx
-    return q
-
-
 def series(symbols):
     scall = symbols
     if isinstance(scall, str):
@@ -128,7 +107,9 @@ def series(symbols):
     if isinstance(scall, dict):
         scall = list(scall.keys())
 
-    q = build_series_query(scall)
+    # get metadata if we have PRA symbol
+    meta = metadata(tuple(scall)) if any([limutils.check_pra_symbol(x) for x in scall]) else None
+    q = limqueryutils.build_series_query(scall, meta)
     res = query(q)
 
     if isinstance(symbols, dict):
