@@ -142,28 +142,25 @@ def curve(symbols, column='Close', curve_dates=None, curve_formula=None):
     return res
 
 
-def curve_formula(curve_formula, column='Close', curve_dates=None, valid_symbols=None):
+def curve_formula(formula, column='Close', curve_dates=None):
     """
     Calculate a forward curve using existing symbols
-    :param curve_formula:
+    :param formula:
     :param column:
     :param curve_dates:
     :param valid_symbols:
     :return:
     """
-    if valid_symbols is None:
-        valid_symbols = ['FP', 'FB'] # todo get valid list of symbols from API
 
-    matches = re.findall(r"(?=(" + '|'.join(valid_symbols) + r"))", curve_formula)
-
+    matches = find_symbols_in_query(formula)
     if curve_dates is None:
-        res = curve(matches, column=column, curve_formula=curve_formula)
+        res = curve(matches, column=column, curve_formula=formula)
     else:
         dfs, res = [], None
         if not isinstance(curve_dates, list):
             curve_dates = [curve_dates]
         for d in curve_dates:
-            rx = curve(matches, column=column, curve_dates=d, curve_formula=curve_formula)
+            rx = curve(matches, column=column, curve_dates=d, curve_formula=formula)
             if rx is not None:
                 rx = rx[['1']].rename(columns={'1':d.strftime("%Y/%m/%d")})
                 dfs.append(rx)
@@ -180,12 +177,58 @@ def continuous_futures_rollover(symbol, months=['M1'], rollover_date='5 days bef
     return res
 
 
-@lru_cache(maxsize=None)
-def futures_contracts(symbol, start_year=curyear, end_year=curyear+2):
+def futures_contracts(symbol, start_year=curyear, end_year=curyear+2, months=None):
     contracts = get_symbol_contract_list(symbol, monthly_contracts_only=True)
     contracts = [x for x in contracts if start_year <= int(x.split('_')[-1][:4]) <= end_year]
+    if months is not None:
+        contracts = [x for x in contracts if x[-1] in months]
     df = series(contracts)
     return df
+
+
+def futures_contracts_formula(formula, start_year=curyear, end_year=curyear+2, months=None):
+    matches = find_symbols_in_query(formula)
+    contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
+    contracts = [x for x in contracts if start_year <= int(x.split('_')[-1][:4]) <= end_year]
+    if months is not None:
+        contracts = [x for x in contracts if x[-1] in months]
+
+    common_contacts = set([x.split('_')[-1] for x in contracts])
+
+    q = limqueryutils.build_futures_contracts_formula_query(formula, matches=matches, contracts=common_contacts)
+    df = query(q)
+    return df
+
+
+def quarterly(symbol, quarter=1, start_year=curyear, end_year=curyear+2):
+    """
+    Given a symbol or formula, calculate the quarterly average and return as a series of yearly timeseries
+    :param symbol:
+    :param quarter:
+    :param start_year:
+    :param end_year:
+    :return:
+    """
+    cmap = {1: ['F', 'G', 'H'], 2: ['J', 'K', 'M'], 3: ['N', 'Q', 'U'], 4: ['V', 'X', 'Z']}
+    return calendar(symbol, start_year=start_year, end_year=end_year, months=cmap[quarter])
+
+
+def calendar(symbol, start_year=curyear, end_year=curyear+2, months=None):
+    """
+    Given a symbol or formula, calculate the calendar (yearly) average and return as a series of yearly timeseries
+    :param symbol:
+    :param quarter:
+    :param start_year:
+    :param end_year:
+    :return:
+    """
+
+    if symbol.lower().startswith('show'):
+        df = futures_contracts_formula(symbol, start_year=start_year, end_year=end_year, months=months)
+    else:
+        df = futures_contracts(symbol, start_year=start_year, end_year=end_year, months=months)
+
+    return limutils.pivots_contract_by_year(df)
 
 
 @lru_cache(maxsize=None)
@@ -260,4 +303,12 @@ def get_symbol_contract_list(symbol, monthly_contracts_only=False):
             contracts = [x for x in contracts if re.findall('\d\d\d\d\w', x) ]
         return contracts
 
+
+@lru_cache(maxsize=None)
+def find_symbols_in_query(q):
+    m = re.findall(r'\w[a-zA-Z]+', q)
+    rel = relations(tuple(m)).T
+    rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
+    if len(rel) > 0:
+        return list(rel['name'])
 

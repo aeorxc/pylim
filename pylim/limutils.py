@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 
 def alternate_col_val(values, noCols):
@@ -100,7 +101,7 @@ def pivots_contract_by_year(df):
     :return:(
     """
     dfs = []
-    for year in set([x[:4] for x in df.columns]):
+    for year in set([re.search('\d{4}', x).group() for x in df.columns]):
         d = df[[x for x in df.columns if year in x]].mean(1)
         d.name = year
         dfs.append(d)

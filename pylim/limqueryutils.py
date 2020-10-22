@@ -1,4 +1,5 @@
 import datetime
+import re
 import pandas as pd
 from pylim import limutils
 
@@ -115,3 +116,20 @@ def build_continuous_futures_rollover_query(symbol, months=['M1'], rollover_date
         shows += 'M{0}: M{0} \n '.format(m)
 
     return build_let_show_when_helper(lets, shows, whens)
+
+
+def build_futures_contracts_formula_query(formula, matches, contracts):
+    lets, shows = '', ''
+    for cont in contracts:
+        shows += '%s: x%s \n' % (cont, cont)
+        t = formula
+        for vsym in matches:
+            t = re.sub(r'\b%s\b' % (vsym), '%s_%s' % (vsym, cont), t)
+
+        if 'show' in t.lower():
+            t = re.sub(r'\Show 1:', 'ATTR x%s = ' % cont, t)
+        else:
+            t = 'ATTR x%s = %s' % (cont, t)
+        lets += '%s \n' % t
+
+    return build_let_show_when_helper(lets, shows, 'date is after 2009')

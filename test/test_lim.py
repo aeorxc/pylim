@@ -68,14 +68,14 @@ class TestLim(unittest.TestCase):
         self.assertIn('2020/03/18', res.columns)
 
     def test_curve_formula(self):
-        res = lim.curve_formula(curve_formula='Show 1: FP/7.45-FB', valid_symbols=['FP', 'FB'])
+        res = lim.curve_formula(formula='Show 1: FP/7.45-FB')
         self.assertIn('FP', res.columns)
         self.assertIn('FB', res.columns)
         self.assertIn('1', res.columns)
 
     def test_curve_formula2(self):
         cd = [pd.to_datetime('2020-02-02'), pd.to_datetime('2020-04-04')]
-        res = lim.curve_formula(curve_formula='Show 1: FP/7.45-FB', curve_dates=cd, valid_symbols=['FP', 'FB'])
+        res = lim.curve_formula(formula='Show 1: FP/7.45-FB', curve_dates=cd)
         self.assertIn('2020/02/02', res.columns)
         self.assertIn('2020/04/04', res.columns)
         self.assertEqual(res['2020/02/02']['2020-05-01'], 10.929)
@@ -91,13 +91,32 @@ class TestLim(unittest.TestCase):
         self.assertIn('FB_2020Z', res)
 
     def test_futures_contracts(self):
-        res = lim.futures_contracts('FB')
+        res = lim.futures_contracts('FB', months=['Z'])
         self.assertIn('FB_2020Z', res.columns)
+
+    def test_futures_contracts_formula(self):
+        res = lim.futures_contracts_formula(formula='Show 1: FP/7.45-FB', months=['F'])
+        self.assertIn('2020F', res.columns)
+        self.assertAlmostEqual(res['2021F']['2020-01-02'], 16.95, 2)
 
     def test_cont_futures_rollover(self):
         res = lim.continuous_futures_rollover('FB', months=['M1', 'M12'], after_date=2019)
         self.assertEqual(res['M1'][pd.to_datetime('2020-01-02')], 66.25)
         self.assertEqual(res['M12'][pd.to_datetime('2020-01-02')], 60.94)
+
+    def test_quarterly(self):
+        res = lim.quarterly('FP')
+        self.assertAlmostEqual(res['2020']['2020-01-02'], 614.5, 1)
+
+        res = lim.quarterly('Show 1: FP/7.45-FB')
+        self.assertAlmostEqual(res['2020']['2020-01-02'], 15.998, 3)
+
+    def test_calendar(self):
+        res = lim.calendar('FP')
+        self.assertAlmostEqual(res['2020']['2020-01-02'], 600.3, 1)
+
+        res = lim.calendar('Show 1: FP/7.45-FB')
+        self.assertAlmostEqual(res['2020']['2020-01-02'], 16.5, 1)
 
     def test_metadata(self):
         symbols = ('FB', 'PCAAS00', 'PUMFE03', 'PJABA00')
@@ -129,6 +148,12 @@ class TestLim(unittest.TestCase):
         res = lim.find_symbols_in_path(path)
         self.assertIn('WI_Q21', res)
         self.assertIn('FB', res)
+
+    def test_find_symbols_in_query(self):
+        q = 'Show 1: FP/7.45-FB'
+        r = lim.find_symbols_in_query(q)
+        self.assertIn('FP', r)
+        self.assertIn('FB', r)
 
 
 if __name__ == '__main__':
