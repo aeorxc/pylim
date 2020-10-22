@@ -306,7 +306,7 @@ def get_symbol_contract_list(symbol, monthly_contracts_only=False):
 
 @lru_cache(maxsize=None)
 def find_symbols_in_query(q):
-    m = re.findall(r'\w[a-zA-Z]+', q)
+    m = re.findall(r'\w[a-zA-Z_]+', q)
     rel = relations(tuple(m)).T
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
     if len(rel) > 0:
