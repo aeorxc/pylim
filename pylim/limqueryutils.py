@@ -25,13 +25,11 @@ def build_series_query(symbols, metadata=None):
         if limutils.check_pra_symbol(symbol):
             use_high_low = False
             if metadata is not None:
-                meta = metadata[symbol]
-                r = dict(zip(meta['columns'], meta['column_starts']))
-                if 'Low' in r and 'High' in r:
-
-                    if 'Close' in r and r['Low'] < r['Close']:
+                meta = metadata[symbol]['daterange']
+                if 'Low' in meta.index and 'High' in meta.index:
+                    if 'Close' in meta.index and meta.start.Low < meta.start.Close:
                         use_high_low = True
-                    if 'MidPoint' in r and r['Low'] < r['MidPoint']:
+                    if 'MidPoint' in meta.index and meta.start.Low < meta.start.MidPoint:
                         use_high_low = True
             if use_high_low:
                 qx = '%s: (High of %s + Low of %s)/2 \n' % (symbol, symbol, symbol)
@@ -76,7 +74,6 @@ def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=No
         whens = '{ %s } and date is after %s' % (whens, last_bus_day)
 
     return build_let_show_when_helper(lets, shows, whens)
-
 
 
 def build_curve_history_query(symbols, column='Close', curve_dates=None):

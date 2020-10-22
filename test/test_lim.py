@@ -86,6 +86,10 @@ class TestLim(unittest.TestCase):
         self.assertIn('FB_1998J', res)
         self.assertIn('FB_2020Z', res)
 
+        res = lim.get_symbol_contract_list(('CL','FB'), monthly_contracts_only=True)
+        self.assertIn('CL_1998J', res)
+        self.assertIn('FB_2020Z', res)
+
     def test_futures_contracts(self):
         res = lim.futures_contracts('FB')
         self.assertIn('FB_2020Z', res.columns)
@@ -96,30 +100,31 @@ class TestLim(unittest.TestCase):
         self.assertEqual(res['M12'][pd.to_datetime('2020-01-02')], 60.94)
 
     def test_metadata(self):
-        symbols = 'PCAAS00'
-        m = lim.metadata(symbols)
-        self.assertIn('PCAAS00', m.columns)
-
-        symbols = ('FB', 'PCAAS00', 'PUMFE03')
-        m = lim.metadata(symbols)
+        symbols = ('FB', 'PCAAS00', 'PUMFE03', 'PJABA00')
+        m = lim.relations(symbols, show_columns=True, date_range=True)
+        self.assertTrue(isinstance(m['FB']['daterange'], pd.DataFrame))
 
         self.assertIn('FB', m.columns)
         self.assertIn('PCAAS00', m.columns)
         self.assertIn('PUMFE03', m.columns)
-
-        symbols = 'PJABA00'
-        m = lim.metadata(symbols)
         self.assertIn('PJABA00', m.columns)
-        self.assertEqual(m.loc['column_starts'][0][0], pd.to_datetime('1979-09-03'))
-        self.assertEqual(m.loc['column_starts'][0][1], pd.to_datetime('2011-01-31'))
-        self.assertEqual(m.loc['column_starts'][0][2], pd.to_datetime('1979-09-03'))
 
-    def test_navigate_lim_tree(self):
+        self.assertEqual(m['PJABA00']['daterange']['start']['Low'], pd.to_datetime('1979-09-03'))
+        self.assertEqual(m['PJABA00']['daterange']['start']['Close'], pd.to_datetime('2011-01-31'))
+        self.assertEqual(m['PJABA00']['daterange']['start']['High'], pd.to_datetime('1979-09-03'))
+
+    def test_relations1(self):
         symbol = 'TopRelation:Futures:Cboe'
-        res = lim.navigate_lim_tree(symbol)
-        self.assertIn('description="CBOE: Volatility Index (VIX) Futures"', res)
+        res = lim.relations(symbol, desc=True)
+        self.assertEqual(res['Cboe']['description'], "Chicago Board Options Exchange")
 
-    def test_find_symbols_in_path(self):
+    def test_relations2(self):
+        symbol = 'FB,CL'
+        res = lim.relations(symbol, show_children=True)
+        self.assertIn('FB', res.loc['children']['FB']['name'].iloc[0])
+        self.assertIn('CL', res.loc['children']['CL']['name'].iloc[0])
+
+    def test_find_symbols_in_path1(self):
         path = 'TopRelation:Futures:Ipe'
         res = lim.find_symbols_in_path(path)
         self.assertIn('WI_Q21', res)

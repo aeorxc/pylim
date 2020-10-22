@@ -17,8 +17,7 @@ limUserName = os.environ['LIMUSERNAME'].replace('"', '')
 limPassword = os.environ['LIMPASSWORD'].replace('"', '')
 
 lim_datarequests_url = '{}/rs/api/datarequests'.format(limServer)
-lim_schema_url = '{}/rs/api/schema/relations/<SYMBOL>?showChildren=false&desc=true&showColumns=true&dateRange=true'.format(limServer)
-lim_schema_futurues_url = '{}/rs/api/schema/relations/<SYMBOL>?showChildren=true&desc=true&showColumns=false&dateRange=true'.format(limServer)
+lim_schema_url = '{}/rs/api/schema/relations'.format(limServer)
 
 calltries = 50
 sleep = 2.5
@@ -108,7 +107,10 @@ def series(symbols):
         scall = list(scall.keys())
 
     # get metadata if we have PRA symbol
-    meta = metadata(tuple(scall)) if any([limutils.check_pra_symbol(x) for x in scall]) else None
+    meta = None
+    if any([limutils.check_pra_symbol(x) for x in scall]):
+        meta = relations(tuple(scall), show_columns=True, date_range=True)
+
     q = limqueryutils.build_series_query(scall, meta)
     res = query(q)
 
@@ -187,17 +189,32 @@ def futures_contracts(symbol, start_year=curyear, end_year=curyear+2):
 
 
 @lru_cache(maxsize=None)
-def navigate_lim_tree(symbol):
+def relations(symbol, show_children=False, show_columns=False, desc=False, date_range=False):
     """
-    Given a symbol call API to get Tree Relations
+    Given a list of symbols call API to get Tree Relations, return as response
     :param symbol:
     :return:
     """
-    uri = lim_schema_futurues_url.replace('<SYMBOL>', symbol)
-    resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies)
+    if isinstance(symbol, list) or isinstance(symbol, tuple):
+        symbol = ','.join(symbol)
+    uri = '%s/%s' % (lim_schema_url, symbol)
+    params = {
+        'showChildren' : 'true' if show_children else 'false',
+        'showColumns' : 'true' if show_columns else 'false',
+        'desc' : 'true' if desc else 'false',
+        'dateRange' : 'true' if date_range else 'false',
+    }
+    resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies, params=params)
 
     if resp.status_code == 200:
-        return resp.text
+        root = etree.fromstring(resp.text.encode('utf-8'))
+        df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], 1, sort=False)
+        if show_children:
+            df = limutils.relinfo_children(df, root)
+        if date_range:
+            df = limutils.relinfo_daterange(df, root)
+        df.columns = df.loc['name'] # make symbol names header
+        return df
     else:
         logging.error('Received response: Code: {} Msg: {}'.format(resp.status_code, resp.text))
         raise Exception(resp.text)
@@ -211,21 +228,15 @@ def find_symbols_in_path(path):
     :return:
     """
     symbols = []
-    resp = navigate_lim_tree(path)
-    root = etree.fromstring(resp.encode('utf-8'))
+    df = relations(path, show_children=True)
 
-    names = [x.attrib['name'] for x in root[0][0]]
-    types = [x.attrib['type'] for x in root[0][0]]
-    haschildren = [x.attrib['hasChildren'] for x in root[0][0]]
-
-    for child in names:
-        if types[names.index(child)] == 'FUTURES':
-            symbols.append(child)
-        if types[names.index(child)] == 'NORMAL':
-            symbols.append(child)
-        if types[names.index(child)] == 'CATEGORY':
-            if haschildren[names.index(child)] == '1':
-                rec_symbols = find_symbols_in_path('%s:%s' % (path, child))
+    for col in df.columns:
+        children = df[col]['children']
+        for i, row in children.iterrows():
+            if row.type == 'FUTURES' or row.type == 'NORMAL':
+                symbols.append(row['name'])
+            if row.type == 'CATEGORY':
+                rec_symbols = find_symbols_in_path('%s:%s' % (path, row['name']))
                 symbols = symbols + rec_symbols
 
     return symbols
@@ -234,48 +245,19 @@ def find_symbols_in_path(path):
 @lru_cache(maxsize=None)
 def get_symbol_contract_list(symbol, monthly_contracts_only=False):
     """
-    Given a symbol pull all futurues contracts related to it
+    Given a symbol pull all futures contracts related to it
     :param symbol:
     :return:
     """
 
-    resp = navigate_lim_tree(symbol)
+    resp = relations(symbol, show_children=True)
     if resp is not None:
-        root = etree.fromstring(resp.encode('utf-8'))
-        contracts = [x.attrib['name'] for x in root[0][0]]
+        children = resp.loc['children']
+        contracts = []
+        for symbol in resp.columns:
+            contracts = contracts + list(children[symbol]['name'])
         if monthly_contracts_only:
             contracts = [x for x in contracts if re.findall('\d\d\d\d\w', x) ]
         return contracts
 
 
-@lru_cache(maxsize=None)
-def metadata(symbols):
-    if isinstance(symbols, str):
-        symbols = [symbols]
-    uri = lim_schema_url.replace('<SYMBOL>', ','.join(symbols))
-    resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies)
-    if resp.status_code == 200:
-        root = etree.fromstring(resp.text.encode('utf-8'))
-        metadata = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], 1, sort=False)
-        columntracker = {}
-        columnstart = {}
-        columnend = {}
-        for symbolindex in metadata.columns:
-            cols = root[symbolindex].find('Columns')
-            if cols is not None and len(cols) > 0:
-                colsnames = [x.attrib['cName'] for x in cols.getchildren()]
-                columntracker[symbolindex] = colsnames
-                colstarti, colendi = [], []
-                for col in cols:
-                    colranges = col.getchildren()
-                    colstarti.append(pd.to_datetime(colranges[0].text[:10]))
-                    colendi.append(pd.to_datetime(colranges[1].text[:10]))
-
-                columnstart[symbolindex] = colstarti
-                columnend[symbolindex] = colendi
-        metadata = metadata.append(pd.Series(columntracker, name='columns'))
-        metadata = metadata.append(pd.Series(columnstart, name='column_starts'))
-        metadata = metadata.append(pd.Series(columnend, name='column_ends'))
-
-        metadata.columns = metadata.loc['name']
-        return metadata
