@@ -104,20 +104,6 @@ class TestLim(unittest.TestCase):
         self.assertEqual(res['M1'][pd.to_datetime('2020-01-02')], 66.25)
         self.assertEqual(res['M12'][pd.to_datetime('2020-01-02')], 60.94)
 
-    def test_quarterly(self):
-        res = lim.quarterly('FP')
-        self.assertAlmostEqual(res['2020']['2020-01-02'], 614.5, 1)
-
-        res = lim.quarterly('Show 1: FP/7.45-FB')
-        self.assertAlmostEqual(res['2020']['2020-01-02'], 15.998, 3)
-
-    def test_calendar(self):
-        res = lim.calendar('FP')
-        self.assertAlmostEqual(res['2020']['2020-01-02'], 600.3, 1)
-
-        res = lim.calendar('Show 1: FP/7.45-FB')
-        self.assertAlmostEqual(res['2020']['2020-01-02'], 16.5, 1)
-
     def test_metadata(self):
         symbols = ('FB', 'PCAAS00', 'PUMFE03', 'PJABA00')
         m = lim.relations(symbols, show_columns=True, date_range=True)

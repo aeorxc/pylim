@@ -2,6 +2,22 @@ import pandas as pd
 import re
 
 
+futures_contract_months = {
+    1: "F",
+    2: "G",
+    3: "H",
+    4: "J",
+    5: "K",
+    6: "M",
+    7: "N",
+    8: "Q",
+    9: "U",
+    10: "V",
+    11: "X",
+    12: "Z"
+}
+
+
 def alternate_col_val(values, noCols):
     for x in range(0, len(values), noCols):
         yield values[x:x + noCols]
@@ -92,6 +108,30 @@ def relinfo_daterange(df, root):
         d2 = pd.DataFrame(dfs, dtype='object', columns=['daterange'])
         df = df.append(d2.T)
     return df
+
+
+def filter_contracts(contracts, start_year=None, end_year=None, months=None):
+    """
+    Given list of contracts (eg FB_2020G) filter by start/end year and month
+    :param contracts:
+    :param start_year:
+    :param end_year:
+    :param months:
+    :return:
+    """
+    if start_year is not None:
+        contracts = [x for x in contracts if start_year <= int(x.split('_')[-1][:4])]
+    if end_year is not None:
+        contracts = [x for x in contracts if int(x.split('_')[-1][:4]) <= end_year]
+    if months is not None:
+        if isinstance(months, int):
+            months = [futures_contract_months[months]]
+        if isinstance(months, list):
+            months = [futures_contract_months[x] if isinstance(x, int) else x for x in months]
+            if None in months:
+                months.remove(None)
+        contracts = [x for x in contracts if x[-1] in months]
+    return contracts
 
 
 def pivots_contract_by_year(df):

@@ -179,9 +179,7 @@ def continuous_futures_rollover(symbol, months=['M1'], rollover_date='5 days bef
 
 def futures_contracts(symbol, start_year=curyear, end_year=curyear+2, months=None):
     contracts = get_symbol_contract_list(symbol, monthly_contracts_only=True)
-    contracts = [x for x in contracts if start_year <= int(x.split('_')[-1][:4]) <= end_year]
-    if months is not None:
-        contracts = [x for x in contracts if x[-1] in months]
+    contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
     df = series(contracts)
     return df
 
@@ -189,46 +187,13 @@ def futures_contracts(symbol, start_year=curyear, end_year=curyear+2, months=Non
 def futures_contracts_formula(formula, start_year=curyear, end_year=curyear+2, months=None):
     matches = find_symbols_in_query(formula)
     contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
-    contracts = [x for x in contracts if start_year <= int(x.split('_')[-1][:4]) <= end_year]
-    if months is not None:
-        contracts = [x for x in contracts if x[-1] in months]
+    contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
 
     common_contacts = set([x.split('_')[-1] for x in contracts])
 
     q = limqueryutils.build_futures_contracts_formula_query(formula, matches=matches, contracts=common_contacts)
     df = query(q)
     return df
-
-
-def quarterly(symbol, quarter=1, start_year=curyear, end_year=curyear+2):
-    """
-    Given a symbol or formula, calculate the quarterly average and return as a series of yearly timeseries
-    :param symbol:
-    :param quarter:
-    :param start_year:
-    :param end_year:
-    :return:
-    """
-    cmap = {1: ['F', 'G', 'H'], 2: ['J', 'K', 'M'], 3: ['N', 'Q', 'U'], 4: ['V', 'X', 'Z']}
-    return calendar(symbol, start_year=start_year, end_year=end_year, months=cmap[quarter])
-
-
-def calendar(symbol, start_year=curyear, end_year=curyear+2, months=None):
-    """
-    Given a symbol or formula, calculate the calendar (yearly) average and return as a series of yearly timeseries
-    :param symbol:
-    :param quarter:
-    :param start_year:
-    :param end_year:
-    :return:
-    """
-
-    if symbol.lower().startswith('show'):
-        df = futures_contracts_formula(symbol, start_year=start_year, end_year=end_year, months=months)
-    else:
-        df = futures_contracts(symbol, start_year=start_year, end_year=end_year, months=months)
-
-    return limutils.pivots_contract_by_year(df)
 
 
 @lru_cache(maxsize=None)
@@ -307,7 +272,8 @@ def get_symbol_contract_list(symbol, monthly_contracts_only=False):
 @lru_cache(maxsize=None)
 def find_symbols_in_query(q):
     m = re.findall(r'\w[a-zA-Z0-9_]+', q)
-    m.remove('Show')
+    if 'Show' in m:
+        m.remove('Show')
     rel = relations(tuple(m)).T
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
     if len(rel) > 0:
