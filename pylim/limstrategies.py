@@ -52,5 +52,8 @@ def spread(symbol, x, y, z=None, start_year=None, end_year=None):
     if isinstance(x, int) and isinstance(y, int):
         return forwards.time_spreads_monthly(contracts, x, y)
 
+    if isinstance(x, str) and isinstance(y, str):
+        if x.upper().startswith('Q') and y.upper().startswith('Q'):
+            return forwards.time_spreads_quarterly(contracts, x, y)
 
 

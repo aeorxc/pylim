@@ -29,6 +29,9 @@ class TestLimStrategies(unittest.TestCase):
         res = limstrategies.spread('FB', x=12, y=12, start_year=2019, end_year=2021)
         self.assertAlmostEqual(res[2020]['2020-01-02'], 3.1, 1)
 
+    def test_spread3(self):
+        res = limstrategies.spread('FB', x='Q1', y='Q2', start_year=2019, end_year=2021)
+        self.assertAlmostEqual(res[2020]['2019-01-02'], -0.29, 2)
 
 
 if __name__ == '__main__':

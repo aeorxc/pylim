@@ -1,21 +1,6 @@
 import pandas as pd
+from commodutil import forwards
 import re
-
-
-futures_contract_months = {
-    1: "F",
-    2: "G",
-    3: "H",
-    4: "J",
-    5: "K",
-    6: "M",
-    7: "N",
-    8: "Q",
-    9: "U",
-    10: "V",
-    11: "X",
-    12: "Z"
-}
 
 
 def alternate_col_val(values, noCols):
@@ -110,6 +95,37 @@ def relinfo_daterange(df, root):
     return df
 
 
+def determine_month(sample):
+    if isinstance(sample, int) and sample in forwards.futures_month_conv:
+        return forwards.futures_month_conv[sample]
+    if isinstance(sample, str):
+        if sample in forwards.futures_month_conv.values():
+            return sample
+        if sample.upper() == 'Q1':
+            return ['F', 'G', 'H']
+        if sample.upper() == 'Q2':
+            return ['J', 'K', 'M']
+        if sample.upper() == 'Q3':
+            return ['N', 'Q', 'U']
+        if sample.upper() == 'Q4':
+            return ['V', 'X', 'Z']
+        if sample.upper().startswith('CAL'):
+            return list(forwards.futures_month_conv.values())
+
+
+def filter_contracts_months(contracts, months):
+    if not isinstance(months, list):
+        months = [months]
+
+    months = [determine_month(x) for x in months]
+    if None in months:
+        months.remove(None)
+    months = [item for sublist in months for item in sublist] # flatten list
+
+    contracts = [x for x in contracts if x[-1] in months]
+    return contracts
+
+
 def filter_contracts(contracts, start_year=None, end_year=None, months=None):
     """
     Given list of contracts (eg FB_2020G) filter by start/end year and month
@@ -124,13 +140,7 @@ def filter_contracts(contracts, start_year=None, end_year=None, months=None):
     if end_year is not None:
         contracts = [x for x in contracts if int(x.split('_')[-1][:4]) <= end_year]
     if months is not None:
-        if isinstance(months, int):
-            months = [futures_contract_months[months]]
-        if isinstance(months, list):
-            months = [futures_contract_months[x] if isinstance(x, int) else x for x in months]
-            if None in months:
-                months.remove(None)
-        contracts = [x for x in contracts if x[-1] in months]
+        contracts = filter_contracts_months(contracts, months)
     return contracts
 
 
