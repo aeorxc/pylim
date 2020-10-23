@@ -10,12 +10,12 @@ prevyear = curyear - 1
 def build_let_show_when_helper(lets, shows, whens):
     query = '''
 LET
-    {0}
+{0}
 SHOW
-    {1}
+{1}
 WHEN
-    {2}
-        '''.format(lets, shows, whens)
+{2}
+'''.format(lets, shows, whens)
     return query
 
 
