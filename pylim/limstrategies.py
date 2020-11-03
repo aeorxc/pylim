@@ -44,6 +44,7 @@ def calendar(symbol, start_year=curyear, end_year=curyear+2, months=None):
 def spread(symbol, x, y, z=None, start_year=None, end_year=None):
     contracts = _contracts(symbol, start_year=start_year, end_year=end_year, months=[x,y,z])
     contracts = contracts.rename(columns={x: pd.to_datetime(forwards.convert_contract_to_date(x)) for x in contracts.columns})
+    contracts = contracts.reindex(sorted(contracts.columns), axis=1) # sort values otherwise column selection in code below doesn't work
 
     if z is not None:
         if isinstance(x,int) and isinstance(y,int) and isinstance(z,int):
@@ -53,7 +54,10 @@ def spread(symbol, x, y, z=None, start_year=None, end_year=None):
         return forwards.time_spreads_monthly(contracts, x, y)
 
     if isinstance(x, str) and isinstance(y, str):
-        if x.upper().startswith('Q') and y.upper().startswith('Q'):
+        x, y = x.upper(), y.upper()
+        if x.startswith('Q') and y.startswith('Q'):
             return forwards.time_spreads_quarterly(contracts, x, y)
 
+        if x.startswith('CAL') and y.startswith('CAL'):
+            return forwards.cal_spreads(forwards.cal_contracts(contracts))
 

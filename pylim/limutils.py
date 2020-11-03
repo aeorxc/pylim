@@ -113,7 +113,22 @@ def determine_month(sample):
             return list(forwards.futures_month_conv.values())
 
 
+def determine_year(samples):
+    res = []
+    for sample in samples:
+        if sample is not None and isinstance(sample, str):
+            sample = sample.upper()
+            if sample.startswith('CAL'):
+                x = sample.replace('CAL', '')
+                if len(x) == 2:
+                    x = '20' + x
+                res.append(x)
+
+    return res
+
+
 def filter_contracts_months(contracts, months):
+    months_org = months
     if not isinstance(months, list):
         months = [months]
 
@@ -123,6 +138,12 @@ def filter_contracts_months(contracts, months):
     months = [item for sublist in months for item in sublist] # flatten list
 
     contracts = [x for x in contracts if x[-1] in months]
+
+    # year limiter for cal
+    year_filter = determine_year(months_org)
+    if year_filter is not None and len(year_filter) > 0:
+        contracts = [x for x in contracts if [y for y in year_filter if y in x]]
+
     return contracts
 
 
