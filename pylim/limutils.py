@@ -178,4 +178,5 @@ def pivots_contract_by_year(df):
         dfs.append(d)
 
     df = pd.concat(dfs, 1)
+    df = df.reindex(sorted(df.columns), axis=1)
     return df
