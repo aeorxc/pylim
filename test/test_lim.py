@@ -91,11 +91,14 @@ class TestLim(unittest.TestCase):
         self.assertIn('FB_2020Z', res)
 
     def test_futures_contracts(self):
-        res = lim.futures_contracts('FB', months=['Z'])
+        res = lim.futures_contracts('FB', months=['Z'], start_date='2020-01-01')
+        self.assertIn('FB_2020Z', res.columns)
+
+        res = lim.futures_contracts('FB', months=['Z'], start_date='date is within 5 days')
         self.assertIn('FB_2020Z', res.columns)
 
     def test_futures_contracts_formula(self):
-        res = lim.futures_contracts_formula(formula='Show 1: FP/7.45-FB', months=['F'])
+        res = lim.futures_contracts_formula(formula='Show 1: FP/7.45-FB', months=['F'], start_date='2020-01-01')
         self.assertIn('2020F', res.columns)
         self.assertAlmostEqual(res['2021F']['2020-01-02'], 16.95, 2)
 

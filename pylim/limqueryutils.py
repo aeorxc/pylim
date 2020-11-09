@@ -19,7 +19,19 @@ WHEN
     return query
 
 
-def build_series_query(symbols, metadata=None):
+def build_when_clause(start_date=None):
+    when = ''
+    if start_date is not None:
+        if 'date is within' in start_date.lower():
+            when = start_date
+        else:
+            if isinstance(start_date, str):
+                start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+            when = 'date is after %s' % (start_date.strftime('%m/%d/%Y'))
+    return when
+
+
+def build_series_query(symbols, metadata=None, start_date=None):
     q = 'Show \n'
     for symbol in symbols:
         qx = '{}: {}\n'.format(symbol, symbol)
@@ -36,6 +48,11 @@ def build_series_query(symbols, metadata=None):
                 qx = '%s: (High of %s + Low of %s)/2 \n' % (symbol, symbol, symbol)
 
         q += qx
+
+    when = build_when_clause(start_date)
+    if when is not None and when != '':
+        q += 'when %s' % when
+
     return q
 
 
@@ -118,7 +135,7 @@ def build_continuous_futures_rollover_query(symbol, months=['M1'], rollover_date
     return build_let_show_when_helper(lets, shows, whens)
 
 
-def build_futures_contracts_formula_query(formula, matches, contracts):
+def build_futures_contracts_formula_query(formula, matches, contracts, start_date=None):
     lets, shows = '', ''
     for cont in contracts:
         shows += '%s: x%s \n' % (cont, cont)
@@ -132,4 +149,6 @@ def build_futures_contracts_formula_query(formula, matches, contracts):
             t = 'ATTR x%s = %s' % (cont, t)
         lets += '%s \n' % t
 
-    return build_let_show_when_helper(lets, shows, 'date is after 2009')
+    when = build_when_clause(start_date)
+
+    return build_let_show_when_helper(lets, shows, whens=when)

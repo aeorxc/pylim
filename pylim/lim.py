@@ -99,7 +99,7 @@ def query(q, id=None, tries=calltries, cache_inc=False):
         raise Exception(resp.text)
 
 
-def series(symbols):
+def series(symbols, start_date=None):
     scall = symbols
     if isinstance(scall, str):
         scall = [scall]
@@ -111,7 +111,7 @@ def series(symbols):
     if any([limutils.check_pra_symbol(x) for x in scall]):
         meta = relations(tuple(scall), show_columns=True, date_range=True)
 
-    q = limqueryutils.build_series_query(scall, meta)
+    q = limqueryutils.build_series_query(scall, meta, start_date=start_date)
     res = query(q)
 
     if isinstance(symbols, dict):
@@ -177,21 +177,21 @@ def continuous_futures_rollover(symbol, months=['M1'], rollover_date='5 days bef
     return res
 
 
-def futures_contracts(symbol, start_year=curyear, end_year=curyear+2, months=None):
+def futures_contracts(symbol, start_year=curyear, end_year=curyear+2, months=None, start_date=None):
     contracts = get_symbol_contract_list(symbol, monthly_contracts_only=True)
     contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
-    df = series(contracts)
+    df = series(contracts, start_date=start_date)
     return df
 
 
-def futures_contracts_formula(formula, start_year=curyear, end_year=curyear+2, months=None):
+def futures_contracts_formula(formula, start_year=curyear, end_year=curyear+2, months=None, start_date=None):
     matches = find_symbols_in_query(formula)
     contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
     contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
 
     common_contacts = set([x.split('_')[-1] for x in contracts])
 
-    q = limqueryutils.build_futures_contracts_formula_query(formula, matches=matches, contracts=common_contacts)
+    q = limqueryutils.build_futures_contracts_formula_query(formula, matches=matches, contracts=common_contacts, start_date=start_date)
     df = query(q)
     return df
 
