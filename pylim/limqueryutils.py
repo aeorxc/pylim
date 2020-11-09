@@ -103,7 +103,7 @@ def build_curve_history_query(symbols, column='Close', curve_dates=None):
     :return:
     """
 
-    if not isinstance(curve_dates, list):
+    if not isinstance(curve_dates, list) and not isinstance(curve_dates, tuple):
         curve_dates = [curve_dates]
 
     lets, shows, whens = '', '', ''
