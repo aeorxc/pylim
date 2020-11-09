@@ -7,15 +7,15 @@ from pylim import limutils
 curyear = lim.curyear
 
 
-def _contracts(symbol, start_year=None, end_year=None, months=None):
+def _contracts(symbol, start_year=None, end_year=None, months=None, start_date=None):
     if symbol.lower().startswith('show'):
-        df = lim.futures_contracts_formula(symbol, start_year=start_year, end_year=end_year, months=months)
+        df = lim.futures_contracts_formula(symbol, start_year=start_year, end_year=end_year, months=months, start_date=start_date)
     else:
-        df = lim.futures_contracts(symbol, start_year=start_year, end_year=end_year, months=months)
+        df = lim.futures_contracts(symbol, start_year=start_year, end_year=end_year, months=months, start_date=start_date)
     return df
 
 
-def quarterly(symbol, quarter=1, start_year=curyear, end_year=curyear+2):
+def quarterly(symbol, quarter=1, start_year=curyear, end_year=curyear+2, start_date=None):
     """
     Given a symbol or formula, calculate the quarterly average and return as a series of yearly timeseries
     :param symbol:
@@ -28,7 +28,7 @@ def quarterly(symbol, quarter=1, start_year=curyear, end_year=curyear+2):
     return calendar(symbol, start_year=start_year, end_year=end_year, months=cmap[quarter])
 
 
-def calendar(symbol, start_year=curyear, end_year=curyear+2, months=None):
+def calendar(symbol, start_year=curyear, end_year=curyear+2, months=None, start_date=None):
     """
     Given a symbol or formula, calculate the calendar (yearly) average and return as a series of yearly timeseries
     :param symbol:
@@ -37,12 +37,12 @@ def calendar(symbol, start_year=curyear, end_year=curyear+2, months=None):
     :param end_year:
     :return:
     """
-    df = _contracts(symbol, start_year=start_year, end_year=end_year, months=months)
+    df = _contracts(symbol, start_year=start_year, end_year=end_year, months=months, start_date=start_date)
     return limutils.pivots_contract_by_year(df)
 
 
-def spread(symbol, x, y, z=None, start_year=None, end_year=None):
-    contracts = _contracts(symbol, start_year=start_year, end_year=end_year, months=[x,y,z])
+def spread(symbol, x, y, z=None, start_year=None, end_year=None, start_date=None):
+    contracts = _contracts(symbol, start_year=start_year, end_year=end_year, months=[x,y,z], start_date=start_date)
     contracts = contracts.rename(columns={x: pd.to_datetime(forwards.convert_contract_to_date(x)) for x in contracts.columns})
     contracts = contracts.reindex(sorted(contracts.columns), axis=1) # sort values otherwise column selection in code below doesn't work
 
