@@ -11,6 +11,13 @@ class TestLimStrategies(unittest.TestCase):
         res = limstrategies.quarterly('Show 1: FP/7.45-FB', start_date='2020-01-01')
         self.assertAlmostEqual(res['2020']['2020-01-02'], 15.998, 3)
 
+    def test_quarterly_all(self):
+        res = limstrategies.quarterly('Show 1: FP/7.45-FB', quarter='all', start_date='2020-01-01')
+        self.assertAlmostEqual(res['Q1_2020']['2020-01-02'], 15.998, 3)
+        self.assertAlmostEqual(res['Q2_2020']['2020-01-02'], 16.064, 3)
+        self.assertAlmostEqual(res['Q3_2020']['2020-01-02'], 16.504, 3)
+        self.assertAlmostEqual(res['Q4_2020']['2020-01-02'], 16.961, 3)
+
     def test_calendar(self):
         res = limstrategies.calendar('FP', start_date='2020-01-01')
         self.assertAlmostEqual(res['2020']['2020-01-02'], 600.3, 1)
@@ -54,6 +61,11 @@ class TestLimStrategies(unittest.TestCase):
         # calendar
         res = limstrategies.spread('Show 1: FP/7.45-FB', x='CAL19', y='CAL20')
         self.assertAlmostEqual(res['CAL 2019-2020']['2019-01-02'], -1.48, 2)
+
+    def test_multi_spread(self):
+        res = limstrategies.multi_spread('Show 1: FP/7.45-FB', spreads=[[6,6], [12, 12]], start_year=2020, start_date='2020-01-01')
+        self.assertAlmostEqual(res['M6M6_2020']['2020-01-02'], -0.45, 2)
+        self.assertAlmostEqual(res['M12M12_2020']['2020-01-02'], 0.46, 2)
 
 
 if __name__ == '__main__':
