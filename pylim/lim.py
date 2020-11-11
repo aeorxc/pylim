@@ -157,7 +157,7 @@ def curve_formula(formula, column='Close', curve_dates=None):
         res = curve(matches, column=column, curve_formula=formula)
     else:
         dfs, res = [], None
-        if not isinstance(curve_dates, list):
+        if not isinstance(curve_dates, list) and not isinstance(curve_dates, tuple):
             curve_dates = [curve_dates]
         for d in curve_dates:
             rx = curve(matches, column=column, curve_dates=d, curve_formula=formula)
