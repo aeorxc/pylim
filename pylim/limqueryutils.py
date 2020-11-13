@@ -1,6 +1,6 @@
 import datetime
+import dateutil
 import re
-import pandas as pd
 from pylim import limutils
 
 curyear = datetime.datetime.now().year
@@ -88,8 +88,8 @@ def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=No
         shows += curve_formula
 
     if curve_date is None: # when no curve date is specified we get a full history so trim
-        last_bus_day = (datetime.datetime.now() - pd.tseries.offsets.BDay(1)).strftime('%m/%d/%Y')
-        whens = '{ %s } and date is after %s' % (whens, last_bus_day)
+        last_month = (datetime.datetime.now() - dateutil.relativedelta.relativedelta(months=1)).strftime('%m/%d/%Y')
+        whens = '{ %s } and date is after %s' % (whens, last_month)
 
     return build_let_show_when_helper(lets, shows, whens)
 
