@@ -85,6 +85,9 @@ def query(q, id=None, tries=calltries, cache_inc=False):
         if reqStatus == 100:
             res = limutils.build_dataframe(root[0])
             return res
+        elif reqStatus == 110:
+            logging.info('Invalid query')
+            raise Exception(root.attrib['statusMsg'])
         elif reqStatus == 130:
             logging.info('No data')
         elif reqStatus == 200:
