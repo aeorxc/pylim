@@ -132,6 +132,11 @@ class TestLim(unittest.TestCase):
         self.assertIn('FB', res.loc['children']['FB']['name'].iloc[0])
         self.assertIn('CL', res.loc['children']['CL']['name'].iloc[0])
 
+    def test_relations3(self):
+        res = lim.relations('BRENT_IPE_SWAP', show_children=True, date_range=True, show_columns=True)
+        self.assertEqual('BRENT_IPE_SWAP', res.loc['name'].iloc[0])
+        self.assertIn('daterange', res.index)
+
     def test_find_symbols_in_path1(self):
         path = 'TopRelation:Futures:Ipe'
         res = lim.find_symbols_in_path(path)

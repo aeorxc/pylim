@@ -58,11 +58,7 @@ def relinfo_children(df, root):
         d = pd.concat([namec, typec], 1)
         dfs.append(d)
 
-    if len(df.columns) == 1:
-        df.loc['children'] = dfs
-    else:
-        d2 = pd.DataFrame(dfs, dtype='object', columns=['children'])
-        df = df.append(d2.T)
+    df = df.append(pd.Series(dfs, name='children'))
     return df
 
 
@@ -87,11 +83,7 @@ def relinfo_daterange(df, root):
         dr = pd.DataFrame(s, index=colnames, columns=['start', 'end'])
         dfs.append(dr)
 
-    if len(df.columns) == 1:
-        df.loc['daterange'] = dfs
-    else:
-        d2 = pd.DataFrame(dfs, dtype='object', columns=['daterange'])
-        df = df.append(d2.T)
+    df = df.append(pd.Series(dfs, name='daterange'))
     return df
 
 
