@@ -207,6 +207,7 @@ def relations(symbol, show_children=False, show_columns=False, desc=False, date_
     :return:
     """
     if isinstance(symbol, list) or isinstance(symbol, tuple):
+        symbol = set(symbol)
         symbol = ','.join(symbol)
     uri = '%s/%s' % (lim_schema_url, symbol)
     params = {
@@ -260,7 +261,6 @@ def get_symbol_contract_list(symbol, monthly_contracts_only=False):
     :param symbol:
     :return:
     """
-
     resp = relations(symbol, show_children=True)
     if resp is not None:
         children = resp.loc['children']
