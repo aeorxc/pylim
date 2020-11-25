@@ -78,6 +78,10 @@ def spread(symbol, x, y, z=None, start_year=None, end_year=None, start_date=None
             return forwards.cal_spreads(forwards.cal_contracts(contracts))
 
 
+def fly(symbol, x, y, z, start_year=None, end_year=None, start_date=None):
+    return spread(symbol, x, y, z, start_year=start_year, end_year=end_year, start_date=start_date)
+
+
 def multi_spread(symbol, spreads, start_year=None, end_year=None, start_date=None):
     contracts = spread_contracts(symbol, start_year=start_year, end_year=end_year, start_date=start_date)
 
