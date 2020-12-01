@@ -1,4 +1,5 @@
 import pandas as pd
+import calendar as cal
 from commodutil import forwards
 from pylim import lim
 from pylim import limutils
@@ -88,7 +89,7 @@ def multi_spread(symbol, spreads, start_year=None, end_year=None, start_date=Non
     dfs = []
     for spread in spreads:
         r = forwards.time_spreads_monthly(contracts, spread[0], spread[1])
-        r = r.rename(columns={x:'M%sM%s_%s' % (spread[0], spread[1], x) for x in r.columns})
+        r = r.rename(columns={x:'%s%s_%s' % (cal.month_abbr[spread[0]], cal.month_abbr[spread[1]], x) for x in r.columns})
         dfs.append(r)
 
     res = pd.concat(dfs, 1)

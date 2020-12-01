@@ -64,8 +64,8 @@ class TestLimStrategies(unittest.TestCase):
 
     def test_multi_spread(self):
         res = limstrategies.multi_spread('Show 1: FP/7.45-FB', spreads=[[6,6], [12, 12]], start_year=2020, start_date='2020-01-01')
-        self.assertAlmostEqual(res['M6M6_2020']['2020-01-02'], -0.45, 2)
-        self.assertAlmostEqual(res['M12M12_2020']['2020-01-02'], 0.46, 2)
+        self.assertAlmostEqual(res['JunJun_2020']['2020-01-02'], -0.45, 2)
+        self.assertAlmostEqual(res['DecDec_2020']['2020-01-02'], 0.46, 2)
 
     def test_fly1(self):
         res = limstrategies.fly('FB', x=1, y=2, z=3, start_year=2019, end_year=2020, start_date='2019-01-01')
