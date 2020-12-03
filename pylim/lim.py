@@ -204,6 +204,19 @@ def futures_contracts_formula(formula, start_year=curyear, end_year=curyear+2, m
     return df
 
 
+def structure(symbol, mx, my, start_date=None):
+    sx, sy = '%s_%s' % (symbol, mx), '%s_%s' % (symbol, my)
+    if mx == 1:
+        sx = symbol
+    if my == 1:
+        sy = symbol
+
+    df = series([sx, sy], start_date=start_date)
+    df['M%s-M%s' % (mx, my)] = df[sx] - df[sy]
+
+    return df
+
+
 @lru_cache(maxsize=None)
 def relations(symbol, show_children=False, show_columns=False, desc=False, date_range=False):
     """

@@ -3,6 +3,7 @@ import calendar as cal
 from commodutil import forwards
 from pylim import lim
 from pylim import limutils
+from pylim import limqueryutils as lqu
 
 
 curyear = lim.curyear
@@ -93,4 +94,16 @@ def multi_spread(symbol, spreads, start_year=None, end_year=None, start_date=Non
         dfs.append(r)
 
     res = pd.concat(dfs, 1)
+    return res
+
+
+def structure(symbol, mx, my, start_date=None):
+    if not symbol.lower().startswith('show'):
+        return lim.structure(symbol, mx, my, start_date=start_date)
+
+    matches = lim.find_symbols_in_query(symbol)
+    clause = lqu.extract_clause(symbol)
+
+    q = lqu.build_structure_query(clause, matches, mx, my, start_date)
+    res = lim.query(q)
     return res

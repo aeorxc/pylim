@@ -1,5 +1,6 @@
 from pylim import limstrategies
 import unittest
+import pandas as pd
 
 
 class TestLimStrategies(unittest.TestCase):
@@ -74,6 +75,10 @@ class TestLimStrategies(unittest.TestCase):
     def test_fly2(self):
         res = limstrategies.fly('Show 1: FP/7.45-FB', x=1, y=2, z=3, start_year=2019, end_year=2020, start_date='2019-01-01')
         self.assertAlmostEqual(res[2020]['2019-01-02'], 0.023, 2)
+
+    def test_structure1(self):
+        res = limstrategies.structure('Show 1: FP/7.45-FB', 1, 12, start_date='2020-01-01')
+        self.assertAlmostEqual(res['M1-M12'][pd.to_datetime('2020-01-02')], -1.18, 2)
 
 
 if __name__ == '__main__':

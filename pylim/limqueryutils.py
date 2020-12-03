@@ -152,3 +152,33 @@ def build_futures_contracts_formula_query(formula, matches, contracts, start_dat
     when = build_when_clause(start_date)
 
     return build_let_show_when_helper(lets, shows, whens=when)
+
+
+def build_structure_query(clause, symbols, mx, my, start_date=None):
+    cx = clause
+    cy = clause
+    for match in symbols:
+        if mx != 1:
+            cx = cx.replace(match, '%s_%s' % (match, mx))
+        if my != 1:
+            cy = cy.replace(match, '%s_%s' % (match, my))
+
+    q = 'Show M%s-M%s: (%s) - (%s)' % (mx, my, cx, cy)
+    if start_date is not None:
+        q = add_date_after_filter(query=q, date=start_date)
+    return q
+
+
+def add_date_after_filter(query, date):
+    cutdate = dateutil.parser.parse(date).strftime('%m/%d/%Y')
+    query += ' when date is after {}'.format(cutdate)
+    return query
+
+
+def extract_clause(query):
+    """
+    Given a string like Shop 1: x + y, return x + y
+    :param query:
+    :return:
+    """
+    return re.sub(r'Show \w:', '', query)

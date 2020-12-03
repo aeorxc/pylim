@@ -107,6 +107,10 @@ class TestLim(unittest.TestCase):
         self.assertEqual(res['M1'][pd.to_datetime('2020-01-02')], 66.25)
         self.assertEqual(res['M12'][pd.to_datetime('2020-01-02')], 60.94)
 
+    def test_structre1(self):
+        res = lim.structure('FB', 1, 12, start_date='2020-01-01')
+        self.assertAlmostEqual(res['M1-M12'][pd.to_datetime('2020-01-02')], 5.31, 2)
+
     def test_metadata(self):
         symbols = ('FB', 'PCAAS00', 'PUMFE03', 'PJABA00')
         m = lim.relations(symbols, show_columns=True, date_range=True)
@@ -131,11 +135,6 @@ class TestLim(unittest.TestCase):
         res = lim.relations(symbol, show_children=True)
         self.assertIn('FB', res.loc['children']['FB']['name'].iloc[0])
         self.assertIn('CL', res.loc['children']['CL']['name'].iloc[0])
-
-    def test_relations3(self):
-        res = lim.relations('BRENT_IPE_SWAP', show_children=True, date_range=True, show_columns=True)
-        self.assertEqual('BRENT_IPE_SWAP', res.loc['name'].iloc[0])
-        self.assertIn('daterange', res.index)
 
     def test_find_symbols_in_path1(self):
         path = 'TopRelation:Futures:Ipe'
