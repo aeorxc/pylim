@@ -192,7 +192,12 @@ def futures_contracts_formula(formula, start_year=curyear, end_year=curyear+2, m
     contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
     contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
 
-    common_contacts = set([x.split('_')[-1] for x in contracts])
+    s = []
+    for match in matches:
+        r = [x.split('_')[-1] for x in contracts if match in x]
+        s.append(set(r))
+
+    common_contacts = list(set(s[0].intersection(*s)))
 
     q = limqueryutils.build_futures_contracts_formula_query(formula, matches=matches, contracts=common_contacts, start_date=start_date)
     df = query(q)
