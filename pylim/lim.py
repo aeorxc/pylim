@@ -205,11 +205,8 @@ def futures_contracts_formula(formula, start_year=curyear, end_year=curyear+2, m
 
 
 def structure(symbol, mx, my, start_date=None):
-    sx, sy = '%s_%s' % (symbol, mx), '%s_%s' % (symbol, my)
-    if mx == 1:
-        sx = symbol
-    if my == 1:
-        sy = symbol
+    sx = limqueryutils.continous_convention(symbol, symbol, mx=mx)
+    sy = limqueryutils.continous_convention(symbol, symbol, mx=my)
 
     df = series([sx, sy], start_date=start_date)
     df['M%s-M%s' % (mx, my)] = df[sx] - df[sy]

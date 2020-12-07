@@ -108,6 +108,9 @@ class TestLim(unittest.TestCase):
         self.assertEqual(res['M12'][pd.to_datetime('2020-01-02')], 60.94)
 
     def test_structre1(self):
+        res = lim.structure('FB', 1, 2, start_date='2020-01-01')
+        self.assertAlmostEqual(res['M1-M2'][pd.to_datetime('2020-01-02')], 0.689, 2)
+
         res = lim.structure('FB', 1, 12, start_date='2020-01-01')
         self.assertAlmostEqual(res['M1-M12'][pd.to_datetime('2020-01-02')], 5.31, 2)
 

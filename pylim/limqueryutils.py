@@ -154,14 +154,20 @@ def build_futures_contracts_formula_query(formula, matches, contracts, start_dat
     return build_let_show_when_helper(lets, shows, whens=when)
 
 
+def continous_convention(clause, symbol, mx):
+    if mx != 1:
+        if mx > 1 and mx < 10:
+            mx = '0%s' % mx
+        clause = clause.replace(symbol, '%s_%s' % (symbol, mx))
+    return clause
+
+
 def build_structure_query(clause, symbols, mx, my, start_date=None):
     cx = clause
     cy = clause
     for match in symbols:
-        if mx != 1:
-            cx = cx.replace(match, '%s_%s' % (match, mx))
-        if my != 1:
-            cy = cy.replace(match, '%s_%s' % (match, my))
+        cx = continous_convention(cx, match, mx)
+        cy = continous_convention(cy, match, my)
 
     q = 'Show M%s-M%s: (%s) - (%s)' % (mx, my, cx, cy)
     if start_date is not None:
