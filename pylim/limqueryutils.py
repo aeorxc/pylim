@@ -1,10 +1,16 @@
 import datetime
 import dateutil
 import re
+import typing as t
 from pylim import limutils
 
 curyear = datetime.datetime.now().year
 prevyear = curyear - 1
+
+
+def is_formula(symbol: str) -> bool:
+    lowercase = symbol.lower()
+    return lowercase.startswith("show") or lowercase.startswith("let")
 
 
 def build_let_show_when_helper(lets, shows, whens):
