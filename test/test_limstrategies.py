@@ -6,24 +6,24 @@ import pandas as pd
 class TestLimStrategies(unittest.TestCase):
 
     def test_quarterly(self):
-        res = limstrategies.quarterly('FP', start_date='2020-01-01')
+        res = limstrategies.quarterly('FP', start_date='2020-01-01', start_year=2020)
         self.assertAlmostEqual(res['2020']['2020-01-02'], 614.5, 1)
 
-        res = limstrategies.quarterly('Show 1: FP/7.45-FB', start_date='2020-01-01')
+        res = limstrategies.quarterly('Show 1: FP/7.45-FB', start_date='2020-01-01', start_year=2020)
         self.assertAlmostEqual(res['2020']['2020-01-02'], 15.998, 3)
 
     def test_quarterly_all(self):
-        res = limstrategies.quarterly('Show 1: FP/7.45-FB', quarter='all', start_date='2020-01-01')
+        res = limstrategies.quarterly('Show 1: FP/7.45-FB', quarter='all', start_date='2020-01-01', start_year=2020)
         self.assertAlmostEqual(res['Q1_2020']['2020-01-02'], 15.998, 3)
         self.assertAlmostEqual(res['Q2_2020']['2020-01-02'], 16.064, 3)
         self.assertAlmostEqual(res['Q3_2020']['2020-01-02'], 16.504, 3)
         self.assertAlmostEqual(res['Q4_2020']['2020-01-02'], 16.961, 3)
 
     def test_calendar(self):
-        res = limstrategies.calendar('FP', start_date='2020-01-01')
+        res = limstrategies.calendar('FP', start_date='2020-01-01', start_year=2020)
         self.assertAlmostEqual(res['2020']['2020-01-02'], 600.3, 1)
 
-        res = limstrategies.calendar('Show 1: FP/7.45-FB')
+        res = limstrategies.calendar('Show 1: FP/7.45-FB', start_year=2020)
         self.assertAlmostEqual(res['2020']['2020-01-02'], 16.5, 1)
 
     def test_spread1(self):
