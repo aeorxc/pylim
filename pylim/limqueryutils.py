@@ -1,6 +1,7 @@
 import datetime
 import dateutil
 import re
+import pandas as pd
 import typing as t
 from pylim import limutils
 
@@ -13,7 +14,7 @@ def is_formula(symbol: str) -> bool:
     return lowercase.startswith("show") or lowercase.startswith("let")
 
 
-def build_let_show_when_helper(lets, shows, whens):
+def build_let_show_when_helper(lets: t.Tuple[str, ...], shows: t.Tuple[str, ...], whens: t.Tuple[str, ...]):
     query = '''
 LET
 {0}
@@ -25,8 +26,7 @@ WHEN
     return query
 
 
-def build_when_clause(start_date=None):
-
+def build_when_clause(start_date=t.Tuple[str, datetime.date]):
     if start_date:
         if isinstance(start_date, str):
             if 'date is within' in start_date.lower():
@@ -42,7 +42,8 @@ def build_when_clause(start_date=None):
     return ''
 
 
-def build_series_query(symbols, metadata=None, start_date=None):
+def build_series_query(symbols: t.Tuple[str, ...], metadata: t.Optional[pd.DataFrame] = None,
+                       start_date: t.Optional[t.Tuple[str, datetime.date]] = None):
     q = 'Show \n'
     for symbol in symbols:
         qx = '{}: {}\n'.format(symbol, symbol)
@@ -67,7 +68,8 @@ def build_series_query(symbols, metadata=None, start_date=None):
     return q
 
 
-def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=None):
+def build_curve_query(symbols: t.Tuple[str, ...], column: str = 'Close', curve_date=datetime.date,
+                      curve_formula: str = None):
     """
     Build query for multiple symbols and single curve dates
     :param symbols:
@@ -87,7 +89,8 @@ def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=No
         if len(symbols) > 1 and counter != len(symbols):
             inc_or = 'OR'
 
-        lets += 'ATTR x{1} = forward_curve({1},"{2}","{3}","","","days","",0 day ago)\n'.format(counter, symbol, column, curve_date_str)
+        lets += 'ATTR x{1} = forward_curve({1},"{2}","{3}","","","days","",0 day ago)\n'.format(counter, symbol, column,
+                                                                                                curve_date_str)
         shows += '{0}: x{0}\n'.format(symbol)
         whens += 'x{0} is DEFINED {1}\n'.format(symbol, inc_or)
 
@@ -98,14 +101,14 @@ def build_curve_query(symbols, column='Close', curve_date=None, curve_formula=No
             curve_formula = curve_formula.replace(symbol, 'x%s' % (symbol))
         shows += curve_formula
 
-    if curve_date is None: # when no curve date is specified we get a full history so trim
+    if curve_date is None:  # when no curve date is specified we get a full history so trim
         last_month = (datetime.datetime.now() - dateutil.relativedelta.relativedelta(months=1)).strftime('%m/%d/%Y')
         whens = '{ %s } and date is after %s' % (whens, last_month)
 
     return build_let_show_when_helper(lets, shows, whens)
 
 
-def build_curve_history_query(symbols, column='Close', curve_dates=None):
+def build_curve_history_query(symbols: str, column: str = 'Close', curve_dates=t.Optional[t.Tuple[datetime.date, ...]]):
     """
     Build query for single symbol and multiple curve dates
     :param symbols:
@@ -113,10 +116,6 @@ def build_curve_history_query(symbols, column='Close', curve_dates=None):
     :param curve_dates:
     :return:
     """
-
-    if not isinstance(curve_dates, list) and not isinstance(curve_dates, tuple):
-        curve_dates = [curve_dates]
-
     lets, shows, whens = '', '', ''
     counter = 0
     for curve_date in curve_dates:
@@ -126,13 +125,16 @@ def build_curve_history_query(symbols, column='Close', curve_dates=None):
         inc_or = ''
         if len(curve_dates) > 1 and counter != len(curve_dates):
             inc_or = 'OR'
-        lets += 'ATTR x{0} = forward_curve({1},"{2}","{3}","","","days","",0 day ago)\n'.format(counter, symbols[0], column, curve_date_str)
+        lets += 'ATTR x{0} = forward_curve({1},"{2}","{3}","","","days","",0 day ago)\n'.format(counter, symbols[0],
+                                                                                                column, curve_date_str)
         shows += '{0}: x{1}\n'.format(curve_date_str_nor, counter)
         whens += 'x{0} is DEFINED {1}\n'.format(counter, inc_or)
     return build_let_show_when_helper(lets, shows, whens)
 
 
-def build_continuous_futures_rollover_query(symbol, months=['M1'], rollover_date='5 days before expiration day', after_date=prevyear):
+def build_continuous_futures_rollover_query(symbol: str, months: t.Tuple[str, ...] = ['M1'],
+                                            rollover_date: str = '5 days before expiration day',
+                                            after_date: int = datetime.date.today().year - 1) -> str:
     lets, shows, whens = '', '', 'Date is after {}\n'.format(after_date)
     for month in months:
         m = int(month[1:])
@@ -140,13 +142,15 @@ def build_continuous_futures_rollover_query(symbol, months=['M1'], rollover_date
             rollover_policy = 'actual prices'
         else:
             rollover_policy = '{} nearby actual prices'.format(m)
-        lets += 'M{1} = {0}(ROLLOVER_DATE = "{2}",ROLLOVER_POLICY = "{3}")\n '.format(symbol, m, rollover_date, rollover_policy)
+        lets += 'M{1} = {0}(ROLLOVER_DATE = "{2}",ROLLOVER_POLICY = "{3}")\n '.format(symbol, m, rollover_date,
+                                                                                      rollover_policy)
         shows += 'M{0}: M{0} \n '.format(m)
 
     return build_let_show_when_helper(lets, shows, whens)
 
 
-def build_futures_contracts_formula_query(formula, matches, contracts, start_date=None):
+def build_futures_contracts_formula_query(formula: str, matches: t.Tuple[str, ...], contracts: t.Tuple[str, ...],
+                                          start_date: t.Optional[t.Tuple[str, datetime.date]] = None):
     lets, shows = '', ''
     for cont in contracts:
         shows += '%s: x%s \n' % (cont, cont)
@@ -165,7 +169,7 @@ def build_futures_contracts_formula_query(formula, matches, contracts, start_dat
     return build_let_show_when_helper(lets, shows, whens=when)
 
 
-def continous_convention(clause, symbol, mx):
+def continous_convention(clause: str, symbol: str, mx: int):
     if mx != 1:
         if mx > 1 and mx < 10:
             mx = '0%s' % mx
@@ -173,7 +177,7 @@ def continous_convention(clause, symbol, mx):
     return clause
 
 
-def build_structure_query(clause, symbols, mx, my, start_date=None):
+def build_structure_query(clause: str, symbols: t.Tuple[str, ...], mx, my, start_date=t.Optional[datetime.date]) -> str:
     cx = clause
     cy = clause
     for match in symbols:
@@ -182,17 +186,11 @@ def build_structure_query(clause, symbols, mx, my, start_date=None):
 
     q = 'Show M%s-M%s: (%s) - (%s)' % (mx, my, cx, cy)
     if start_date is not None:
-        q = add_date_after_filter(query=q, date=start_date)
+        q += ' when date is after {}'.format(start_date.strftime('%m/%d/%Y'))
     return q
 
 
-def add_date_after_filter(query, date):
-    cutdate = dateutil.parser.parse(date).strftime('%m/%d/%Y')
-    query += ' when date is after {}'.format(cutdate)
-    return query
-
-
-def extract_clause(query):
+def extract_clause(query: str):
     """
     Given a string like Shop 1: x + y, return x + y
     :param query:

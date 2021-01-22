@@ -1,3 +1,4 @@
+import typing as t
 import pandas as pd
 from commodutil import forwards
 import re
@@ -8,11 +9,11 @@ def alternate_col_val(values, noCols):
         yield values[x:x + noCols]
 
 
-def build_dataframe(reports):
+def build_dataframe(reports) -> pd.DataFrame:
     columns = [x.text for x in reports.iter(tag='ColumnHeadings')]
     dates = [x.text for x in reports.iter(tag='RowDates')]
     if len(columns) == 0 or len(dates) == 0:
-        return # no data, return`1
+        return  # no data, return`1
 
     values = [float(x.text) for x in reports.iter(tag='Values')]
     values = list(alternate_col_val(values, len(columns)))
@@ -127,7 +128,7 @@ def filter_contracts_months(contracts, months):
     months = [determine_month(x) for x in months]
     if None in months:
         months.remove(None)
-    months = [item for sublist in months for item in sublist] # flatten list
+    months = [item for sublist in months for item in sublist]  # flatten list
 
     contracts = [x for x in contracts if x[-1] in months]
 

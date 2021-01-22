@@ -3,6 +3,7 @@ from datetime import datetime
 from pylim import lim
 import unittest
 
+curyear = datetime.today().year
 
 class TestLim(unittest.TestCase):
 
@@ -53,7 +54,7 @@ class TestLim(unittest.TestCase):
         self.assertIn('GO', res.columns)
         self.assertIn('Brent', res.columns)
 
-        res = lim.curve('FB', curve_dates=pd.to_datetime('2020-03-17'))
+        res = lim.curve('FB', curve_dates=[pd.to_datetime('2020-03-17')])
         self.assertEqual(res['2020/03/17']['2020-05-01'], 28.73)
         self.assertEqual(res['2020/03/17']['2020-08-01'], 33.25)
 
@@ -93,14 +94,14 @@ class TestLim(unittest.TestCase):
 
     def test_futures_contracts(self):
         res = lim.futures_contracts('FB', months=['Z'], start_date='2020-01-01')
-        self.assertIn('FB_%sZ' % lim.curyear, res.columns)
+        self.assertIn('FB_%sZ' % curyear, res.columns)
 
         res = lim.futures_contracts('FB', months=['Z'], start_date='date is within 5 days')
-        self.assertIn('FB_%sZ' % lim.curyear, res.columns)
+        self.assertIn('FB_%sZ' % curyear, res.columns)
 
     def test_futures_contracts_formula(self):
         res = lim.futures_contracts_formula(formula='Show 1: FP/7.45-FB', months=['F'], start_year=2020, start_date='2020-01-01')
-        self.assertIn('%sF' % lim.curyear, res.columns)
+        self.assertIn('%sF' % curyear, res.columns)
         self.assertAlmostEqual(res['2021F']['2020-01-02'], 16.95, 2)
 
     def test_cont_futures_rollover(self):

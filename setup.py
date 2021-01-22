@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="pylim",
-    version="1.1.24",
+    version="1.2.1",
     author="aeorxc",
     author_email="author@example.com",
     description="wrapper around morningstar commodity (LIM)",
@@ -21,4 +21,3 @@ setuptools.setup(
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
 )
-

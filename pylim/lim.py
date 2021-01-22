@@ -1,3 +1,4 @@
+import typing as t
 import pandas as pd
 import os
 import re
@@ -11,7 +12,6 @@ import hashlib
 from pylim import limutils
 from pylim import limqueryutils
 
-
 limServer = os.environ['LIMSERVER'].replace('"', '')
 limUserName = os.environ['LIMUSERNAME'].replace('"', '')
 limPassword = os.environ['LIMPASSWORD'].replace('"', '')
@@ -21,9 +21,6 @@ lim_schema_url = '{}/rs/api/schema/relations'.format(limServer)
 
 calltries = 50
 sleep = 2.5
-
-curyear = datetime.datetime.now().year
-prevyear = curyear - 1
 
 headers = {
     'Content-Type': 'application/xml',
@@ -64,7 +61,7 @@ def query_cached(q):
     return res
 
 
-def query(q, id=None, tries=calltries, cache_inc=False):
+def query(q: str, id: int = None, tries: int = calltries, cache_inc: bool = False) -> pd.DataFrame:
     if cache_inc:
         return query_cached(q)
 
@@ -74,7 +71,8 @@ def query(q, id=None, tries=calltries, cache_inc=False):
         raise Exception('Run out of tries')
 
     if id is None:
-        resp = requests.request("POST", lim_datarequests_url, headers=headers, data=r, auth=(limUserName, limPassword), proxies=proxies)
+        resp = requests.request("POST", lim_datarequests_url, headers=headers, data=r, auth=(limUserName, limPassword),
+                                proxies=proxies)
     else:
         uri = '{}/{}'.format(lim_datarequests_url, id)
         resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies)
@@ -102,7 +100,7 @@ def query(q, id=None, tries=calltries, cache_inc=False):
         raise Exception(resp.text)
 
 
-def series(symbols, start_date=None):
+def series(symbols: t.Tuple[str, dict], start_date: t.Optional[t.Tuple[str, datetime.date]] = None) -> pd.DataFrame:
     scall = symbols
     if isinstance(scall, str):
         scall = [scall]
@@ -123,7 +121,9 @@ def series(symbols, start_date=None):
     return res
 
 
-def curve(symbols, column='Close', curve_dates=None, curve_formula=None):
+def curve(symbols: t.Tuple[str, dict], column: str = 'Close',
+          curve_dates: t.Optional[t.Tuple[datetime.date, ...]] = None,
+          curve_formula: str = None) -> pd.DataFrame:
     scall = symbols
     if isinstance(scall, str):
         scall = [scall]
@@ -145,7 +145,8 @@ def curve(symbols, column='Close', curve_dates=None, curve_formula=None):
     return res
 
 
-def curve_formula(formula, column='Close', curve_dates=None):
+def curve_formula(formula: str, column: str = 'Close',
+                  curve_dates: t.Optional[t.Tuple[datetime.date, ...]] = None) -> pd.DataFrame:
     """
     Calculate a forward curve using existing symbols
     :param formula:
@@ -165,7 +166,7 @@ def curve_formula(formula, column='Close', curve_dates=None):
         for d in curve_dates:
             rx = curve(matches, column=column, curve_dates=d, curve_formula=formula)
             if rx is not None:
-                rx = rx[['1']].rename(columns={'1':d.strftime("%Y/%m/%d")})
+                rx = rx[['1']].rename(columns={'1': d.strftime("%Y/%m/%d")})
                 dfs.append(rx)
         if len(dfs) > 0:
             res = pd.concat(dfs, 1)
@@ -174,20 +175,28 @@ def curve_formula(formula, column='Close', curve_dates=None):
     return res
 
 
-def continuous_futures_rollover(symbol, months=['M1'], rollover_date='5 days before expiration day', after_date=prevyear):
-    q = limqueryutils.build_continuous_futures_rollover_query(symbol, months=months, rollover_date=rollover_date, after_date=after_date)
+def continuous_futures_rollover(symbol: str, months: t.Tuple[str, ...] = ['M1'],
+                                rollover_date: str = '5 days before expiration day',
+                                after_date=datetime.date.today().year - 1) -> pd.DataFrame:
+    q = limqueryutils.build_continuous_futures_rollover_query(symbol, months=months, rollover_date=rollover_date,
+                                                              after_date=after_date)
     res = query(q)
     return res
 
 
-def futures_contracts(symbol, start_year=datetime.date.today().year, end_year=datetime.date.today().year+2, months=None, start_date=None):
+def futures_contracts(symbol: str, start_year: int = datetime.date.today().year,
+                      end_year: int = datetime.date.today().year + 2, months=t.Optional[t.Tuple[str, ...]],
+                      start_date=t.Optional[datetime.date]) -> pd.DataFrame:
     contracts = get_symbol_contract_list(symbol, monthly_contracts_only=True)
     contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
     df = series(contracts, start_date=start_date)
     return df
 
 
-def futures_contracts_formula(formula, start_year=datetime.date.today().year, end_year=datetime.date.today().year, months=None, start_date=None):
+def futures_contracts_formula(formula: str, start_year: int = datetime.date.today().year,
+                              end_year: int = datetime.date.today().year,
+                              months=t.Optional[t.Tuple[str, ...]],
+                              start_date=t.Optional[datetime.date]) -> pd.DataFrame:
     matches = find_symbols_in_query(formula)
     contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
     contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
@@ -199,12 +208,13 @@ def futures_contracts_formula(formula, start_year=datetime.date.today().year, en
 
     common_contacts = list(set(s[0].intersection(*s)))
 
-    q = limqueryutils.build_futures_contracts_formula_query(formula, matches=matches, contracts=common_contacts, start_date=start_date)
+    q = limqueryutils.build_futures_contracts_formula_query(formula, matches=matches, contracts=common_contacts,
+                                                            start_date=start_date)
     df = query(q)
     return df
 
 
-def structure(symbol, mx, my, start_date=None):
+def structure(symbol: str, mx: int, my: int, start_date=t.Optional[datetime.date]) -> pd.DataFrame:
     sx = limqueryutils.continous_convention(symbol, symbol, mx=mx)
     sy = limqueryutils.continous_convention(symbol, symbol, mx=my)
 
@@ -215,7 +225,8 @@ def structure(symbol, mx, my, start_date=None):
 
 
 @lru_cache(maxsize=None)
-def relations(symbol, show_children=False, show_columns=False, desc=False, date_range=False):
+def relations(symbol: str, show_children: bool = False, show_columns: bool = False, desc: bool = False,
+              date_range: bool = False) -> pd.DataFrame:
     """
     Given a list of symbols call API to get Tree Relations, return as response
     :param symbol:
@@ -226,10 +237,10 @@ def relations(symbol, show_children=False, show_columns=False, desc=False, date_
         symbol = ','.join(symbol)
     uri = '%s/%s' % (lim_schema_url, symbol)
     params = {
-        'showChildren' : 'true' if show_children else 'false',
-        'showColumns' : 'true' if show_columns else 'false',
-        'desc' : 'true' if desc else 'false',
-        'dateRange' : 'true' if date_range else 'false',
+        'showChildren': 'true' if show_children else 'false',
+        'showColumns': 'true' if show_columns else 'false',
+        'desc': 'true' if desc else 'false',
+        'dateRange': 'true' if date_range else 'false',
     }
     resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies, params=params)
 
@@ -240,7 +251,7 @@ def relations(symbol, show_children=False, show_columns=False, desc=False, date_
             df = limutils.relinfo_children(df, root)
         if date_range:
             df = limutils.relinfo_daterange(df, root)
-        df.columns = df.loc['name'] # make symbol names header
+        df.columns = df.loc['name']  # make symbol names header
         return df
     else:
         logging.error('Received response: Code: {} Msg: {}'.format(resp.status_code, resp.text))
@@ -248,7 +259,7 @@ def relations(symbol, show_children=False, show_columns=False, desc=False, date_
 
 
 @lru_cache(maxsize=None)
-def find_symbols_in_path(path):
+def find_symbols_in_path(path: str) -> list:
     """
     Given a path in the LIM tree hierarchy, find all symbols in that path
     :param path:
@@ -270,7 +281,7 @@ def find_symbols_in_path(path):
 
 
 @lru_cache(maxsize=None)
-def get_symbol_contract_list(symbol, monthly_contracts_only=False):
+def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) -> list:
     """
     Given a symbol pull all futures contracts related to it
     :param symbol:
@@ -283,12 +294,12 @@ def get_symbol_contract_list(symbol, monthly_contracts_only=False):
         for symbol in resp.columns:
             contracts = contracts + list(children[symbol]['name'])
         if monthly_contracts_only:
-            contracts = [x for x in contracts if re.findall('\d\d\d\d\w', x) ]
+            contracts = [x for x in contracts if re.findall('\d\d\d\d\w', x)]
         return contracts
 
 
 @lru_cache(maxsize=None)
-def find_symbols_in_query(q):
+def find_symbols_in_query(q: str) -> list:
     m = re.findall(r'\w[a-zA-Z0-9_]+', q)
     if 'Show' in m:
         m.remove('Show')
@@ -296,4 +307,3 @@ def find_symbols_in_query(q):
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
     if len(rel) > 0:
         return list(rel['name'])
-
