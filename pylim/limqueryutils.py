@@ -20,15 +20,20 @@ WHEN
 
 
 def build_when_clause(start_date=None):
-    when = ''
-    if start_date is not None:
-        if 'date is within' in start_date.lower():
-            when = start_date
-        else:
-            if isinstance(start_date, str):
+
+    if start_date:
+        if isinstance(start_date, str):
+            if 'date is within' in start_date.lower():
+                return start_date
+            else:
                 start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-            when = 'date is after %s' % (start_date.strftime('%m/%d/%Y'))
-    return when
+                m_start_date = start_date - datetime.timedelta(days=1)
+                return 'date is after %s' % (m_start_date.strftime('%m/%d/%Y'))
+        if isinstance(start_date, datetime.date):
+            m_start_date = start_date - datetime.timedelta(days=1)
+            return 'date is after %s' % (m_start_date.strftime('%m/%d/%Y'))
+
+    return ''
 
 
 def build_series_query(symbols, metadata=None, start_date=None):
