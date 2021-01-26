@@ -120,10 +120,8 @@ def determine_year(samples):
     return res
 
 
-def filter_contracts_months(contracts, months):
+def filter_contracts_months(contracts: t.Tuple[str, ...], months: t.Tuple[str, ...]):
     months_org = months
-    if not isinstance(months, list):
-        months = [months]
 
     months = [determine_month(x) for x in months]
     if None in months:
@@ -140,7 +138,7 @@ def filter_contracts_months(contracts, months):
     return contracts
 
 
-def filter_contracts(contracts, start_year=None, end_year=None, months=None):
+def filter_contracts(contracts: t.Tuple[str, ...], start_year: int=None, end_year: int=None, months:t.Optional[t.Tuple[str, ...]] =None):
     """
     Given list of contracts (eg FB_2020G) filter by start/end year and month
     :param contracts:
