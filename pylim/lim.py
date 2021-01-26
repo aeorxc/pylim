@@ -184,19 +184,10 @@ def continuous_futures_rollover(symbol: str, months: t.Tuple[str, ...] = ['M1'],
     return res
 
 
-def futures_contracts(symbol: str, start_year: int = datetime.date.today().year,
-                      end_year: int = datetime.date.today().year + 2, months=t.Optional[t.Tuple[str, ...]],
-                      start_date=t.Optional[datetime.date]) -> pd.DataFrame:
-    contracts = get_symbol_contract_list(symbol, monthly_contracts_only=True)
-    contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
-    df = series(contracts, start_date=start_date)
-    return df
-
-
-def futures_contracts_formula(formula: str, start_year: int = datetime.date.today().year,
-                              end_year: int = datetime.date.today().year,
-                              months=t.Optional[t.Tuple[str, ...]],
-                              start_date=t.Optional[datetime.date]) -> pd.DataFrame:
+def contracts(formula: str, start_year: int = datetime.date.today().year,
+              end_year: int = datetime.date.today().year,
+              months=t.Optional[t.Tuple[str, ...]],
+              start_date=t.Optional[datetime.date]) -> pd.DataFrame:
     matches = find_symbols_in_query(formula)
     contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
     contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)

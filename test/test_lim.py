@@ -5,6 +5,7 @@ import unittest
 
 curyear = datetime.today().year
 
+
 class TestLim(unittest.TestCase):
 
     def test_lim_query(self):
@@ -93,14 +94,15 @@ class TestLim(unittest.TestCase):
         self.assertIn('FB_2020Z', res)
 
     def test_futures_contracts(self):
-        res = lim.futures_contracts('FB', months=['Z'], start_date='2020-01-01')
-        self.assertIn('FB_%sZ' % curyear, res.columns)
+        res = lim.contracts('FB', start_year=2020, months=['Z'], start_date='2020-01-01')
+        self.assertIn('2020Z', res.columns)
+        self.assertIn('%sZ' % curyear, res.columns)
 
-        res = lim.futures_contracts('FB', months=['Z'], start_date='date is within 5 days')
-        self.assertIn('FB_%sZ' % curyear, res.columns)
+        res = lim.contracts('FB', months=['Z'], start_date='date is within 5 days')
+        self.assertIn('%sZ' % curyear, res.columns)
 
     def test_futures_contracts_formula(self):
-        res = lim.futures_contracts_formula(formula='Show 1: FP/7.45-FB', months=['F'], start_year=2020, start_date='2020-01-01')
+        res = lim.contracts(formula='Show 1: FP/7.45-FB', months=['F'], start_year=2020, start_date='2020-01-01')
         self.assertIn('%sF' % curyear, res.columns)
         self.assertAlmostEqual(res['2021F']['2020-01-02'], 16.95, 2)
 
