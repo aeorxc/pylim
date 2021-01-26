@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="pylim",
-    version="1.2.1",
+    version="1.2.2",
     author="aeorxc",
     author_email="author@example.com",
     description="wrapper around morningstar commodity (LIM)",
@@ -17,7 +17,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=['pandas', 'lxml', 'requests', 'tables', 'commodutil'],
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
 )

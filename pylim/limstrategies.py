@@ -8,18 +8,6 @@ from pylim import limutils
 from pylim import limqueryutils as lqu
 
 
-def _contracts(symbol: str, start_year=t.Optional[int], end_year=t.Optional[int],
-               months: t.Optional[t.Tuple[str, ...]] = None,
-               start_date: t.Optional[datetime.date] = None) -> pd.DataFrame:
-    if symbol.lower().startswith('show'):
-        df = lim.futures_contracts_formula(symbol, start_year=start_year, end_year=end_year, months=months,
-                                           start_date=start_date)
-    else:
-        df = lim.futures_contracts(symbol, start_year=start_year, end_year=end_year, months=months,
-                                   start_date=start_date)
-    return df
-
-
 def quarterly(symbol: str, quarter: int = 1, start_year=datetime.date.today().year,
               end_year=datetime.date.today().year + 2, start_date=t.Optional[datetime.date]):
     """
@@ -32,11 +20,13 @@ def quarterly(symbol: str, quarter: int = 1, start_year=datetime.date.today().ye
     """
     cmap = {1: ['F', 'G', 'H'], 2: ['J', 'K', 'M'], 3: ['N', 'Q', 'U'], 4: ['V', 'X', 'Z']}
 
-    if isinstance(quarter, str) and quarter.lower() == 'all':  # calc Q1,Q2,Q3,Q4
-        df = _contracts(symbol, start_year=start_year, end_year=end_year, start_date=start_date)
+    if quarter == 0:  # calc Q1,Q2,Q3,Q4
+        df = lim.contracts(symbol, start_year=start_year, end_year=end_year, start_date=start_date)
         dfs = []
         for qtr in cmap:  # filter columns for each quarter
-            d = limutils.pivots_contract_by_year(df[[x for x in df.columns if x[-1] in cmap[qtr]]])
+            d = df[[x for x in df.columns if x[-1] in cmap[qtr]]]
+            d = limutils.convert_lim_contracts_to_datetime(d)
+            d = limutils.pivots_contract_by_year(d)
             d = d.rename(columns={x: 'Q%s_%s' % (qtr, x) for x in d.columns})  # eg Q12020
             dfs.append(d)
         return pd.concat(dfs, 1)
@@ -56,26 +46,17 @@ def calendar(symbol, start_year=datetime.date.today().year, end_year=datetime.da
     :param end_year:
     :return:
     """
-    df = _contracts(symbol, start_year=start_year, end_year=end_year, months=months, start_date=start_date)
+    df = lim.contracts(symbol, start_year=start_year, end_year=end_year, months=months, start_date=start_date)
+    df = limutils.convert_lim_contracts_to_datetime(df)
     return limutils.pivots_contract_by_year(df)
-
-
-def spread_contracts(symbol: str, start_year=datetime.date.today().year, end_year=datetime.date.today().year + 2,
-                     months: t.Optional[t.Tuple[str, ...]] = None,
-                     start_date: t.Optional[datetime.date] = None) -> pd.DataFrame:
-    contracts = _contracts(symbol, start_year=start_year, end_year=end_year, months=months, start_date=start_date)
-    contracts = contracts.rename(
-        columns={x: pd.to_datetime(forwards.convert_contract_to_date(x)) for x in contracts.columns})
-    contracts = contracts.reindex(sorted(contracts.columns),
-                                  axis=1)  # sort values otherwise column selection in code below doesn't work
-    return contracts
 
 
 def spread(symbol: str, x: t.Tuple[int, str], y: t.Tuple[int, str], z: t.Optional[t.Tuple[int, str]] = None,
            start_year: datetime.date.today().year = None, end_year: datetime.date.today().year = None,
            start_date: t.Optional[datetime.date] = None) -> pd.DataFrame:
-    contracts = spread_contracts(symbol, start_year=start_year, end_year=end_year, months=[x, y, z],
+    contracts = lim.contracts(symbol, start_year=start_year, end_year=end_year, months=[x, y, z],
                                  start_date=start_date)
+    contracts = limutils.convert_lim_contracts_to_datetime(contracts)
 
     if z is not None:
         if isinstance(x, int) and isinstance(y, int) and isinstance(z, int):
@@ -102,7 +83,8 @@ def fly(symbol: str, x: t.Tuple[int, str], y: t.Tuple[int, str], z: t.Optional[t
 def multi_spread(symbol, spreads, start_year: datetime.date.today().year = None,
                  end_year: datetime.date.today().year = None,
                  start_date: t.Optional[datetime.date] = None) -> pd.DataFrame:
-    contracts = spread_contracts(symbol, start_year=start_year, end_year=end_year, start_date=start_date)
+    contracts = lim.contracts(symbol, start_year=start_year, end_year=end_year, start_date=start_date)
+    contracts = limutils.convert_lim_contracts_to_datetime(contracts)
 
     dfs = []
     for spread in spreads:

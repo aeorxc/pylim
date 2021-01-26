@@ -158,6 +158,19 @@ def filter_contracts(contracts, start_year=None, end_year=None, months=None):
     return contracts
 
 
+def convert_lim_contracts_to_datetime(contracts):
+    """
+    Given a dataframe with column headings such as 2020F, 2020G, convert them to 2020-01-01, 2020-02-01
+    :param contracts:
+    :return:
+    """
+    contracts = contracts.rename(
+        columns={x: pd.to_datetime(forwards.convert_contract_to_date(x)) for x in contracts.columns})
+    contracts = contracts.reindex(sorted(contracts.columns),
+                                  axis=1)  # sort values otherwise column selection in code below doesn't work
+    return contracts
+
+
 def pivots_contract_by_year(df):
     """
     Given a list of contracts eg 2020F, 2019F, average by year
@@ -165,8 +178,8 @@ def pivots_contract_by_year(df):
     :return:(
     """
     dfs = []
-    for year in set([re.search('\d{4}', x).group() for x in df.columns]):
-        d = df[[x for x in df.columns if year in x]].mean(1)
+    for year in set([x.year for x in df.columns]):
+        d = df[[x for x in df.columns if x.year == year]].mean(1)
         d.name = year
         dfs.append(d)
 
