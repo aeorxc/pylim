@@ -55,7 +55,7 @@ class TestLim(unittest.TestCase):
         self.assertIn('GO', res.columns)
         self.assertIn('Brent', res.columns)
 
-        res = lim.curve('FB', curve_dates=[pd.to_datetime('2020-03-17')])
+        res = lim.curve('FB', curve_dates=(pd.to_datetime('2020-03-17'),))
         self.assertEqual(res['2020/03/17']['2020-05-01'], 28.73)
         self.assertEqual(res['2020/03/17']['2020-08-01'], 33.25)
 
