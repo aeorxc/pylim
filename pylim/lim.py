@@ -186,7 +186,7 @@ def continuous_futures_rollover(symbol: str, months: t.Tuple[str, ...] = ['M1'],
 
 def contracts(formula: str, start_year: int = datetime.date.today().year,
               end_year: int = datetime.date.today().year,
-              months=t.Optional[t.Tuple[str, ...]],
+              months:t.Optional[t.Tuple[str, ...]] = None,
               start_date=t.Optional[datetime.date]) -> pd.DataFrame:
     matches = find_symbols_in_query(formula)
     contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)

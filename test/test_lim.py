@@ -94,7 +94,7 @@ class TestLim(unittest.TestCase):
         self.assertIn('FB_2020Z', res)
 
     def test_futures_contracts(self):
-        res = lim.contracts('FB', start_year=2020, months=['Z'], start_date='2020-01-01')
+        res = lim.contracts('FB', start_year=2020, start_date='2020-01-01')
         self.assertIn('2020Z', res.columns)
         self.assertIn('%sZ' % curyear, res.columns)
 
