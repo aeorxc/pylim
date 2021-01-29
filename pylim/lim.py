@@ -8,7 +8,6 @@ from lxml import etree
 import requests
 from functools import lru_cache
 import logging
-import hashlib
 from pylim import limutils
 from pylim import limqueryutils
 
@@ -16,8 +15,8 @@ limServer = os.environ['LIMSERVER'].replace('"', '')
 limUserName = os.environ['LIMUSERNAME'].replace('"', '')
 limPassword = os.environ['LIMPASSWORD'].replace('"', '')
 
-lim_datarequests_url = '{}/rs/api/datarequests'.format(limServer)
-lim_schema_url = '{}/rs/api/schema/relations'.format(limServer)
+lim_datarequests_url = f'{limServer}/rs/api/datarequests'
+lim_schema_url = f'{limServer}/rs/api/schema/relations'
 
 calltries = 50
 sleep = 2.5
@@ -32,39 +31,7 @@ proxies = {
 }
 
 
-def query_hash(query):
-    r = hashlib.md5(query.encode()).hexdigest()
-    rf = '{}.h5'.format(r)
-    return rf
-
-
-def query_cached(q):
-    qmod = q
-    res_cache = None
-    rf = query_hash(q)
-    if os.path.exists(rf):
-        res_cache = pd.read_hdf(rf, mode='r')
-        if res_cache is not None and 'date is after' not in q:
-            cutdate = (res_cache.iloc[-1].name + pd.DateOffset(-5)).strftime('%m/%d/%Y')
-            qmod += ' when date is after {}'.format(cutdate)
-
-    res = query(qmod)
-    hdf = pd.HDFStore(rf)
-    if res_cache is None:
-        hdf.put('d', res, format='table', data_columns=True)
-        hdf.close()
-    else:
-        res = pd.concat([res_cache, res], sort=True).drop_duplicates()
-        hdf.put('d', res, format='table', data_columns=True)
-        hdf.close()
-
-    return res
-
-
-def query(q: str, id: int = None, tries: int = calltries, cache_inc: bool = False) -> pd.DataFrame:
-    if cache_inc:
-        return query_cached(q)
-
+def query(q: str, id: int = None, tries: int = calltries) -> pd.DataFrame:
     r = '<DataRequest><Query><Text>{}</Text></Query></DataRequest>'.format(q)
 
     if tries == 0:
@@ -286,7 +253,7 @@ def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) 
         for symbol in resp.columns:
             contracts = contracts + list(children[symbol]['name'])
         if monthly_contracts_only:
-            contracts = [x for x in contracts if re.findall('\d\d\d\d\w', x)]
+            contracts = [x for x in contracts if re.findall(r'\d\d\d\d\w', x)]
         return contracts
 
 

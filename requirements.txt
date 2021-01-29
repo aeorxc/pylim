@@ -1,5 +1,4 @@
 pandas
 lxml
 requests
-tables
 commodutil
