@@ -8,47 +8,40 @@ import pandas as pd
 from pylim import lim
 
 
-lim_upload_default_parser_url = '{}/rs/upload?username={}'.format(lim.limServer, lim.limUserName)
-lim_upload_status_url = '{}/rs/upload/jobreport/'.format(lim.limServer)
-
-
-headers = {
+upload_headers = {
     'Content-Type': 'text/xml',
 }
 
 default_column = 'TopColumn:Price:Close'
 
 
-def check_upload_status(jobid):
-    url = '{}{}'.format(lim_upload_status_url, jobid)
-    resp = requests.get(url, headers=lim.headers, auth=(lim.limUserName, lim.limPassword), proxies=lim.proxies)
+def check_upload_status(job_id):
+    url = f'{lim.limServer}/rs/upload/jobreport/{job_id}'
+    response = lim.session.get(url)
+    try:
+        response.raise_for_status()
+    except requests.RequestException:
+        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
+        raise
 
-    if resp.status_code == 200:
-
-        root = etree.fromstring(resp.text.encode('utf-8'))
-        status_el = root.find('status')
-        if status_el is not None:
-            code, msg = '', ''
-            code_el = status_el.find('code')
-            if code_el is not None:
-                code = code_el.text
-            message_el = status_el.find('message')
-            if message_el is not None:
-                msg = message_el.text
-            if code not in ['200', '201', '300', '302']:
-                logging.warning('jobid {}: code:{} msg:'.format(jobid, code, msg))
-            return code, msg
-    else:
-        logging.error('Received response: Code: {} Msg: {}'.format(resp.status_code, resp.text))
-        raise Exception(resp.text)
+    root = etree.fromstring(response.text.encode('utf-8'))
+    status_el = root.find('status')
+    if status_el is not None:
+        code, msg = '', ''
+        code_el = status_el.find('code')
+        if code_el is not None:
+            code = code_el.text
+        message_el = status_el.find('message')
+        if message_el is not None:
+            msg = message_el.text
+        if code not in ['200', '201', '300', '302']:
+            logging.warning('job id {}: code:{} msg:', job_id, code, msg)
+        return code, msg
 
 
 def build_upload_xml(df, dfmeta):
     """
-    Converts a dataframe (column headings being the treepath) into an XML that the uploader takes
-    :param df:
-    :param dfmeta:
-    :return:
+    Converts a dataframe (column headings being the treepath) into an XML that the uploader takes.
     """
     E = lxml.builder.ElementMaker()
     ROOT = E.ExcelData
@@ -87,7 +80,7 @@ def build_upload_xml(df, dfmeta):
     [xROWS.append(x) for x in entries]
     irow.append(xROWS)
 
-    res = (lxml.etree.tostring(irow, pretty_print=True))
+    res = lxml.etree.tostring(irow, pretty_print=True)
     return res
 
 
@@ -98,48 +91,36 @@ def chunks(lst, n):
 
 
 def upload_chunk(df, dfmeta):
-    url = '{}&parsername=DefaultParser'.format(lim_upload_default_parser_url)
+    url = f'{lim.limServer}/rs/upload'
+    params = {
+        'username': lim.limUserName,
+        'parsername': 'DefaultParser',
+    }
     res = build_upload_xml(df, dfmeta)
-    logging.info('Uploading df below to {}:\n'.format(url, df))
-    resp = requests.request("POST", url, headers=headers, data=res, auth=(lim.limUserName, lim.limPassword),
-                            proxies=lim.proxies)
-
-    status = resp.status_code
-    if status == 200:
-        root = etree.fromstring(resp.text.encode('utf-8'))
-        intStatus = root.attrib['intStatus']
-        if intStatus == '202':
-            jobid = root.attrib['jobID']
-            logging.debug('Submitted jobid:{}'.format(jobid))
-            for i in range(0, lim.calltries):
-                code, msg = check_upload_status(jobid)
-                if code in ['200', '201', '300', '302']:
-                    return msg
-
-                time.sleep(lim.sleep)
-
-    else:
-        logging.error('Received response: Code: {} Msg: {}'.format(resp.status_code, resp.text))
-        logging.error('For chunk head: \n{}'.format(df.head()))
-        logging.error('For chunk tail: \n{}'.format(df.tail()))
-
-        raise Exception(resp.text)
+    logging.info('Uploading chunk to {}', url)
+    response = lim.session.post(url, data=res, headers=upload_headers, params=params)
+    try:
+        response.raise_for_status()
+    except requests.RequestException:
+        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
+        logging.error('For chunk head: \n{}', df.head())
+        logging.error('For chunk tail: \n{}', df.tail())
+        raise
+    root = etree.fromstring(response.text.encode('utf-8'))
+    intStatus = root.attrib['intStatus']
+    if intStatus == '202':
+        job_id = root.attrib['jobID']
+        logging.debug('Submitted job id: {}', job_id)
+        for i in range(0, lim.calltries):
+            code, msg = check_upload_status(job_id)
+            if code in ['200', '201', '300', '302']:
+                return msg
+            time.sleep(lim.sleep)
 
 
-def upload_series(df, dfmeta):
-    # try to do 1000 values at a time
-    if len(df.columns) == 1:
-        chunksize = int(len(df) / 1000)
-        if chunksize < 100:
-            chunksize = 100
-    else:
-        total_count = len(df) * len(df.columns)
-        chunksize = int(round(total_count / len(df.columns) / 1000, 0))
-        if chunksize == 0:
-            chunksize = 1
-
-    msg = ''
-    for chunk in chunks(df, chunksize):
-        msg = upload_chunk(chunk, dfmeta)
-
-    return msg
+def upload_series(df, dfmeta, max_chunk_size: int = 1000):
+    if not len(df.columns):
+        return
+    chunk_size = int(round(len(df) / max_chunk_size, 0)) or 1
+    for chunk in chunks(df, chunk_size):
+        upload_chunk(chunk, dfmeta)

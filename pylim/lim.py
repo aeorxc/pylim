@@ -4,6 +4,7 @@ import os
 import re
 import time
 import datetime
+from urllib.request import getproxies
 from lxml import etree
 import requests
 from functools import lru_cache
@@ -25,10 +26,11 @@ headers = {
     'Content-Type': 'application/xml',
 }
 
-proxies = {
-    'http': os.getenv('http_proxy'),
-    'https': os.getenv('https_proxy')
-}
+# HTTP Session object configured for requesting data from LIM API.
+session = requests.Session()
+session.proxies = getproxies()
+session.headers = headers
+session.auth = (limUserName, limPassword)
 
 
 def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.DataFrame:
@@ -38,33 +40,33 @@ def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.Data
         raise Exception('Run out of tries')
 
     if id is None:
-        resp = requests.request("POST", lim_datarequests_url, headers=headers, data=r, auth=(limUserName, limPassword),
-                                proxies=proxies)
+        response = session.post(lim_datarequests_url, data=r)
     else:
-        uri = '{}/{}'.format(lim_datarequests_url, id)
-        resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies)
-    status = resp.status_code
-    if status == 200:
-        root = etree.fromstring(resp.text.encode('utf-8'))
-        reqStatus = int(root.attrib['status'])
-        if reqStatus == 100:
-            res = limutils.build_dataframe(root[0])
-            return res
-        elif reqStatus == 110:
-            logging.info('Invalid query')
-            raise Exception(root.attrib['statusMsg'])
-        elif reqStatus == 130:
-            logging.info('No data')
-        elif reqStatus == 200:
-            logging.debug('Not complete')
-            reqId = int(root.attrib['id'])
-            time.sleep(sleep)
-            return query(q, reqId, tries - 1)
-        else:
-            raise Exception(root.attrib['statusMsg'])
+        uri = f'{lim_datarequests_url}/{id}'
+        response = session.get(uri)
+    try:
+        response.raise_for_status()
+    except requests.RequestException:
+        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
+        raise
+
+    root = etree.fromstring(response.text.encode('utf-8'))
+    req_status = int(root.attrib['status'])
+    if req_status == 100:
+        res = limutils.build_dataframe(root[0])
+        return res
+    elif req_status == 110:
+        logging.info('Invalid query')
+        raise Exception(root.attrib['statusMsg'])
+    elif req_status == 130:
+        logging.info('No data')
+    elif req_status == 200:
+        logging.debug('Not complete')
+        reqId = int(root.attrib['id'])
+        time.sleep(sleep)
+        return query(q, reqId, tries - 1)
     else:
-        logging.error('Received response: Code: {} Msg: {}', resp.status_code, resp.text)
-        raise Exception(resp.text)
+        raise Exception(root.attrib['statusMsg'])
 
 
 def series(symbols: t.Union[str, dict], start_date: t.Optional[t.Union[str, datetime.date]] = None) -> pd.DataFrame:
@@ -207,7 +209,7 @@ def relations(symbol: str, show_children: bool = False, show_columns: bool = Fal
         'desc': 'true' if desc else 'false',
         'dateRange': 'true' if date_range else 'false',
     }
-    resp = requests.get(uri, headers=headers, auth=(limUserName, limPassword), proxies=proxies, params=params)
+    resp = session.get(uri, params=params)
 
     if resp.status_code == 200:
         root = etree.fromstring(resp.text.encode('utf-8'))
@@ -248,9 +250,7 @@ def find_symbols_in_path(path: str) -> list:
 @lru_cache(maxsize=None)
 def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) -> list:
     """
-    Given a symbol pull all futures contracts related to it
-    :param symbol:
-    :return:
+    Given a symbol pull all futures contracts related to it.
     """
     resp = relations(symbol, show_children=True)
     if resp is not None:

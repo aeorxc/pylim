@@ -15,7 +15,7 @@ class TestLim(unittest.TestCase):
         self.assertIn('FB', res.columns)
         self.assertIn('FP', res.columns)
 
-    def test_extneded_query(self):
+    def test_extended_query(self):
         q = '''
         LET
         FP = FP(ROLLOVER_DATE = "5 days before expiration day",ROLLOVER_POLICY = "actual prices")
@@ -77,7 +77,7 @@ class TestLim(unittest.TestCase):
         self.assertIn('1', res.columns)
 
     def test_curve_formula2(self):
-        cd = [pd.to_datetime('2020-02-02'), pd.to_datetime('2020-04-04')]
+        cd = (pd.to_datetime('2020-02-02'), pd.to_datetime('2020-04-04'))
         res = lim.curve_formula(formula='Show 1: FP/7.45-FB', curve_dates=cd)
         self.assertIn('2020/02/02', res.columns)
         self.assertIn('2020/04/04', res.columns)
