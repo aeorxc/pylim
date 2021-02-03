@@ -21,7 +21,7 @@ def check_upload_status(job_id):
     try:
         response.raise_for_status()
     except requests.RequestException:
-        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
+        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
         raise
 
     root = etree.fromstring(response.text.encode('utf-8'))
@@ -35,7 +35,7 @@ def check_upload_status(job_id):
         if message_el is not None:
             msg = message_el.text
         if code not in ['200', '201', '300', '302']:
-            logging.warning('job id {}: code:{} msg:', job_id, code, msg)
+            logging.warning(f'job id {job_id}: code:{code} msg: {msg}')
         return code, msg
 
 
@@ -97,20 +97,20 @@ def upload_chunk(df, dfmeta):
         'parsername': 'DefaultParser',
     }
     res = build_upload_xml(df, dfmeta)
-    logging.info('Uploading chunk to {}', url)
+    logging.info(f'Uploading chunk to {url}')
     response = lim.session.post(url, data=res, headers=upload_headers, params=params)
     try:
         response.raise_for_status()
     except requests.RequestException:
-        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
-        logging.error('For chunk head: \n{}', df.head())
-        logging.error('For chunk tail: \n{}', df.tail())
+        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
+        logging.error(f'For chunk head: \n{df.head()}')
+        logging.error(f'For chunk tail: \n{df.tail()}')
         raise
     root = etree.fromstring(response.text.encode('utf-8'))
     intStatus = root.attrib['intStatus']
     if intStatus == '202':
         job_id = root.attrib['jobID']
-        logging.debug('Submitted job id: {}', job_id)
+        logging.debug(f'Submitted job id: {job_id}')
         for i in range(0, lim.calltries):
             code, msg = check_upload_status(job_id)
             if code in ['200', '201', '300', '302']:

@@ -53,7 +53,7 @@ def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.Data
     try:
         response.raise_for_status()
     except requests.RequestException:
-        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
+        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
         raise
 
     root = etree.fromstring(response.text.encode('utf-8'))
@@ -223,7 +223,7 @@ def relations(symbol: str, show_children: bool = False, show_columns: bool = Fal
     try:
         response.raise_for_status()
     except requests.RequestException:
-        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
+        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
         raise
     root = etree.fromstring(response.text.encode('utf-8'))
     df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], 1, sort=False)
