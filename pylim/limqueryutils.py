@@ -81,7 +81,7 @@ def build_series_query(
                 if 'Low' in meta.index and 'High' in meta.index:
                     if 'Close' in meta.index and meta.start.Low < meta.start.Close:
                         use_high_low = True
-                    if 'MidPoint' in meta.index and meta.start.Low < meta.start.MidPoint:
+                    if 'MidPoint' in meta.index and meta.start.Low <= meta.start.MidPoint:
                         use_high_low = True
             if use_high_low:
                 qx = f'{symbol}: (High of {symbol} + Low of {symbol})/2'
