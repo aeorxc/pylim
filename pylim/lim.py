@@ -1,23 +1,23 @@
-import typing as t
-import pandas as pd
+import logging
 import os
 import re
 import time
-import datetime
-from urllib.request import getproxies
-from lxml import etree
-import requests
+import typing as t
+from collections.abc import Sequence
+from datetime import date
 from functools import lru_cache
-import logging
+from urllib.request import getproxies
+
+import pandas as pd
+import requests
+from lxml import etree
+
 from pylim import limutils
 from pylim import limqueryutils
 
 limServer = os.environ['LIMSERVER'].replace('"', '')
 limUserName = os.environ['LIMUSERNAME'].replace('"', '')
 limPassword = os.environ['LIMPASSWORD'].replace('"', '')
-
-lim_datarequests_url = f'{limServer}/rs/api/datarequests'
-lim_schema_url = f'{limServer}/rs/api/schema/relations'
 
 calltries = 50
 sleep = 2.5
@@ -33,17 +33,23 @@ session.headers = headers
 session.auth = (limUserName, limPassword)
 
 
-def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.DataFrame:
-    r = '<DataRequest><Query><Text>{}</Text></Query></DataRequest>'.format(q)
+def is_sequence(obj: t.Any) -> bool:
+    if isinstance(obj, str):
+        return False
+    return isinstance(obj, Sequence)
 
+
+def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.DataFrame:
     if tries == 0:
         raise Exception('Run out of tries')
 
+    r = f'<DataRequest><Query><Text>{q}</Text></Query></DataRequest>'
+    base_url = f'{limServer}/rs/api/datarequests'
+
     if id is None:
-        response = session.post(lim_datarequests_url, data=r)
+        response = session.post(base_url, data=r)
     else:
-        uri = f'{lim_datarequests_url}/{id}'
-        response = session.get(uri)
+        response = session.get(f'{base_url}/{id}')
     try:
         response.raise_for_status()
     except requests.RequestException:
@@ -69,17 +75,17 @@ def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.Data
         raise Exception(root.attrib['statusMsg'])
 
 
-def series(symbols: t.Union[str, dict], start_date: t.Optional[t.Union[str, datetime.date]] = None) -> pd.DataFrame:
+def series(symbols: t.Union[str, dict, tuple], start_date: t.Optional[t.Union[str, date]] = None) -> pd.DataFrame:
     scall = symbols
     if isinstance(scall, str):
-        scall = [scall]
-    if isinstance(scall, dict):
-        scall = list(scall.keys())
+        scall = tuple([scall])
+    elif isinstance(scall, dict):
+        scall = tuple(scall)
 
-    # get metadata if we have PRA symbol
+    # Get metadata if we have PRA symbol.
     meta = None
     if any([limutils.check_pra_symbol(x) for x in scall]):
-        meta = relations(tuple(scall), show_columns=True, date_range=True)
+        meta = relations(scall, show_columns=True, date_range=True)
 
     q = limqueryutils.build_series_query(scall, meta, start_date=start_date)
     res = query(q)
@@ -91,21 +97,25 @@ def series(symbols: t.Union[str, dict], start_date: t.Optional[t.Union[str, date
 
 
 def curve(
-    symbols: t.Union[str, dict],
+    symbols: t.Union[str, dict, tuple],
     column: str = 'Close',
-    curve_dates: t.Optional[t.Tuple[datetime.date, ...]] = None,
+    curve_dates: t.Optional[t.Union[date, t.Tuple[date, ...]]] = None,
     curve_formula: str = None,
 ) -> pd.DataFrame:
     scall = symbols
     if isinstance(scall, str):
-        scall = [scall]
-    if isinstance(scall, dict):
-        scall = list(scall.keys())
+        scall = tuple([scall])
+    elif isinstance(scall, dict):
+        scall = tuple(scall)
 
     if curve_formula is None and curve_dates is not None:
         q = limqueryutils.build_curve_history_query(scall, curve_dates, column)
     else:
-        q = limqueryutils.build_curve_query(scall, curve_dates, column, curve_formula=curve_formula)
+        if is_sequence(curve_dates) and len(curve_dates):
+            curve_date = curve_dates[0]
+        else:
+            curve_date = curve_dates
+        q = limqueryutils.build_curve_query(scall, curve_date, column, curve_formula=curve_formula)
     res = query(q)
 
     if isinstance(symbols, dict):
@@ -119,7 +129,7 @@ def curve(
 def curve_formula(
     formula: str,
     column: str = 'Close',
-    curve_dates: t.Optional[t.Tuple[datetime.date, ...]] = None,
+    curve_dates: t.Optional[t.Tuple[date, ...]] = None,
 ) -> pd.DataFrame:
     """
     Calculate a forward curve using existing symbols.
@@ -129,7 +139,7 @@ def curve_formula(
         res = curve(matches, column=column, curve_formula=formula)
     else:
         dfs, res = [], None
-        if not isinstance(curve_dates, list) and not isinstance(curve_dates, tuple):
+        if not is_sequence(curve_dates):
             curve_dates = [curve_dates]
         for d in curve_dates:
             rx = curve(matches, column=column, curve_dates=d, curve_formula=formula)
@@ -147,10 +157,10 @@ def continuous_futures_rollover(
     symbol: str,
     months: t.Tuple[str, ...] = ('M1',),
     rollover_date: str = '5 days before expiration day',
-    after_date: t.Optional[datetime.date] = None
+    after_date: t.Optional[date] = None
 ) -> pd.DataFrame:
     if after_date is None:
-        after_date = datetime.date.today().year - 1
+        after_date = date.today().year - 1
     q = limqueryutils.build_continuous_futures_rollover_query(
         symbol, months=months, rollover_date=rollover_date, after_date=after_date
     )
@@ -163,7 +173,7 @@ def contracts(
     start_year: t.Optional[int] = None,
     end_year: t.Optional[int] = None,
     months: t.Optional[t.Tuple[str, ...]] = None,
-    start_date: t.Optional[datetime.date] = None,
+    start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
     matches = find_symbols_in_query(formula)
     contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
@@ -183,7 +193,7 @@ def contracts(
     return df
 
 
-def structure(symbol: str, mx: int, my: int, start_date: t.Optional[datetime.date] = None) -> pd.DataFrame:
+def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None) -> pd.DataFrame:
     sx = limqueryutils.continuous_convention(symbol, symbol, mx=mx)
     sy = limqueryutils.continuous_convention(symbol, symbol, mx=my)
 
@@ -199,30 +209,30 @@ def relations(symbol: str, show_children: bool = False, show_columns: bool = Fal
     """
     Given a list of symbols call API to get Tree Relations, return as response.
     """
-    if isinstance(symbol, list) or isinstance(symbol, tuple):
+    if is_sequence(symbol):
         symbol = set(symbol)
         symbol = ','.join(symbol)
-    uri = f'{lim_schema_url}/{symbol}'
+    url = f'{limServer}/rs/api/schema/relations/{symbol}'
     params = {
         'showChildren': 'true' if show_children else 'false',
         'showColumns': 'true' if show_columns else 'false',
         'desc': 'true' if desc else 'false',
         'dateRange': 'true' if date_range else 'false',
     }
-    resp = session.get(uri, params=params)
-
-    if resp.status_code == 200:
-        root = etree.fromstring(resp.text.encode('utf-8'))
-        df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], 1, sort=False)
-        if show_children:
-            df = limutils.relinfo_children(df, root)
-        if date_range:
-            df = limutils.relinfo_daterange(df, root)
-        df.columns = df.loc['name']  # make symbol names header
-        return df
-    else:
-        logging.error('Received response: Code: {} Msg: {}', resp.status_code, resp.text)
-        raise Exception(resp.text)
+    response = session.get(url, params=params)
+    try:
+        response.raise_for_status()
+    except requests.RequestException:
+        logging.error('Received response: Code: {} Msg: {}', response.status_code, response.text)
+        raise
+    root = etree.fromstring(response.text.encode('utf-8'))
+    df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], 1, sort=False)
+    if show_children:
+        df = limutils.relinfo_children(df, root)
+    if date_range:
+        df = limutils.relinfo_daterange(df, root)
+    df.columns = df.loc['name']  # make symbol names header
+    return df
 
 
 @lru_cache(maxsize=None)
@@ -241,7 +251,7 @@ def find_symbols_in_path(path: str) -> list:
             if row.type == 'FUTURES' or row.type == 'NORMAL':
                 symbols.append(row['name'])
             if row.type == 'CATEGORY':
-                rec_symbols = find_symbols_in_path('%s:%s' % (path, row['name']))
+                rec_symbols = find_symbols_in_path(f'{path}:{row["name"]}')
                 symbols = symbols + rec_symbols
 
     return symbols
@@ -252,11 +262,11 @@ def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) 
     """
     Given a symbol pull all futures contracts related to it.
     """
-    resp = relations(symbol, show_children=True)
-    if resp is not None:
-        children = resp.loc['children']
+    response = relations(symbol, show_children=True)
+    if response is not None:
+        children = response.loc['children']
         contracts = []
-        for symbol in resp.columns:
+        for symbol in response.columns:
             contracts = contracts + list(children[symbol]['name'])
         if monthly_contracts_only:
             contracts = [x for x in contracts if re.findall(r'\d\d\d\d\w', x)]

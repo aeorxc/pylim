@@ -13,7 +13,7 @@ def build_dataframe(reports) -> pd.DataFrame:
     columns = [x.text for x in reports.iter(tag='ColumnHeadings')]
     dates = [x.text for x in reports.iter(tag='RowDates')]
     if len(columns) == 0 or len(dates) == 0:
-        return  # no data, return`1
+        return
 
     values = [float(x.text) for x in reports.iter(tag='Values')]
     values = list(alternate_col_val(values, len(columns)))
@@ -24,13 +24,12 @@ def build_dataframe(reports) -> pd.DataFrame:
 
 def check_pra_symbol(symbol):
     """
-    Check if this is a Platts or Argus Symbol
-    :param symbol:
-    :return:
+    Check if this is a Platts or Argus symbol.
     """
     # Platts
-    if len(symbol) == 7 and symbol[:2] in [
-        'PC', 'PA', 'AA', 'PU', 'F1', 'PH', 'PJ', 'PG', 'PO', 'PP', ]:
+    if len(symbol) == 7 and symbol[:2] in {
+        'PC', 'PA', 'AA', 'PU', 'F1', 'PH', 'PJ', 'PG', 'PO', 'PP'
+    }:
         return True
 
     # Argus
@@ -44,10 +43,7 @@ def check_pra_symbol(symbol):
 
 def relinfo_children(df, root):
     """
-    Convert the children from relinfo into a dataframe and attached to main result
-    :param df:
-    :param root:
-    :return:
+    Convert the children from relinfo into a dataframe and attached to main result.
     """
     dfs = []
 
@@ -65,10 +61,7 @@ def relinfo_children(df, root):
 
 def relinfo_daterange(df, root):
     """
-    Convert the date ranges from relinfo into a dataframe and attached to main result
-    :param df:
-    :param root:
-    :return:
+    Convert the date ranges from relinfo into a dataframe and attached to main result.
     """
     dfs = []
 
@@ -116,7 +109,6 @@ def determine_year(samples):
                 if len(x) == 2:
                     x = '20' + x
                 res.append(x)
-
     return res
 
 
@@ -140,12 +132,7 @@ def filter_contracts_months(contracts: t.Tuple[str, ...], months: t.Tuple[str, .
 
 def filter_contracts(contracts: t.Tuple[str, ...], start_year: int=None, end_year: int=None, months:t.Optional[t.Tuple[str, ...]] =None):
     """
-    Given list of contracts (eg FB_2020G) filter by start/end year and month
-    :param contracts:
-    :param start_year:
-    :param end_year:
-    :param months:
-    :return:
+    Given list of contracts (eg FB_2020G) filter by start/end year and month.
     """
     if start_year is not None:
         contracts = [x for x in contracts if start_year <= int(x.split('_')[-1][:4])]
@@ -158,22 +145,19 @@ def filter_contracts(contracts: t.Tuple[str, ...], start_year: int=None, end_yea
 
 def convert_lim_contracts_to_datetime(contracts):
     """
-    Given a dataframe with column headings such as 2020F, 2020G, convert them to 2020-01-01, 2020-02-01
-    :param contracts:
-    :return:
+    Given a dataframe with column headings such as 2020F, 2020G, convert them to 2020-01-01, 2020-02-01.
     """
     contracts = contracts.rename(
-        columns={x: pd.to_datetime(forwards.convert_contract_to_date(x)) for x in contracts.columns})
-    contracts = contracts.reindex(sorted(contracts.columns),
-                                  axis=1)  # sort values otherwise column selection in code below doesn't work
+        columns={x: pd.to_datetime(forwards.convert_contract_to_date(x)) for x in contracts.columns}
+    )
+    # sort values otherwise column selection in code below doesn't work
+    contracts = contracts.reindex(sorted(contracts.columns), axis=1)
     return contracts
 
 
 def pivots_contract_by_year(df):
     """
-    Given a list of contracts eg 2020F, 2019F, average by year
-    :param df:
-    :return:(
+    Given a list of contracts eg 2020F, 2019F, average by year.
     """
     dfs = []
     for year in set([x.year for x in df.columns]):
