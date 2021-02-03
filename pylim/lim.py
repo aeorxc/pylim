@@ -45,7 +45,6 @@ def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.Data
 
     r = f'<DataRequest><Query><Text>{q}</Text></Query></DataRequest>'
     base_url = f'{limServer}/rs/api/datarequests'
-
     if id is None:
         response = session.post(base_url, data=r)
     else:

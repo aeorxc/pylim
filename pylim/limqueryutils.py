@@ -8,6 +8,8 @@ import pandas as pd
 
 from pylim import limutils
 
+LIM_DATETIME_FORMAT = '%m/%d/%Y'
+
 
 class LimQueryBuilder:
     let_keyword = 'LET'
@@ -58,12 +60,9 @@ def build_when_clause(start_date: t.Union[str, date]) -> str:
             if 'date is within' in start_date.lower():
                 return start_date
             else:
-                start_date = datetime.strptime(start_date, '%Y-%m-%d')
-                m_start_date = start_date - timedelta(days=1)
-                return f'date is after {m_start_date:%m/%d/%Y}'
-        if isinstance(start_date, date):
-            m_start_date = start_date - timedelta(days=1)
-            return f'date is after {m_start_date:%m/%d/%Y}'
+                start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        previous_date = start_date - timedelta(days=1)
+        return f'date is after {previous_date:{LIM_DATETIME_FORMAT}}'
     return ''
 
 
@@ -89,7 +88,7 @@ def build_series_query(
         symbol_query_parts.append(qx)
 
     when = build_when_clause(start_date)
-    if when is not None and when != '':
+    if when:
         symbol_query_parts.append(f'when {when}')
     query = '\n'.join(symbol_query_parts)
     return query
@@ -102,9 +101,9 @@ def build_curve_query(
     Build query for multiple symbols and a single curve date.
     """
     builder = LimQueryBuilder()
+    curve_date_filter = 'LAST' if curve_date is None else f'{curve_date:{LIM_DATETIME_FORMAT}}'
     for symbol in symbols:
-        curve_date_str = "LAST" if curve_date is None else curve_date.strftime("%m/%d/%Y")
-        builder.add_let(f'ATTR x{symbol} = forward_curve({symbol},"{column}","{curve_date_str}","","","days","",0 day ago)')
+        builder.add_let(f'ATTR x{symbol} = forward_curve({symbol},"{column}","{curve_date_filter}","","","days","",0 day ago)')
         builder.add_show(f'{symbol}: x{symbol}')
         builder.add_when(f'x{symbol} is DEFINED')
     builder.whens_to_or()
@@ -116,9 +115,10 @@ def build_curve_query(
             curve_formula = curve_formula.replace(symbol, f'x{symbol}')
         builder.add_show(curve_formula)
 
-    if curve_date is None:  # when no curve date is specified we get a full history so trim
+    # When no curve date is specified we get a full history so filter it.
+    if curve_date is None:
         last_month = datetime.now() - dateutil.relativedelta.relativedelta(months=1)
-        builder.add_when(f'and date is after {last_month:%m/%d/%Y}')
+        builder.add_when(f'and date is after {last_month:{LIM_DATETIME_FORMAT}}')
 
     return str(builder)
 
@@ -130,12 +130,10 @@ def build_curve_history_query(
     Build query for a single symbol and multiple curve dates.
     """
     builder = LimQueryBuilder()
+    symbol = symbols[0]
     for counter, curve_date in enumerate(curve_dates, start=1):
-        curve_date_str = curve_date.strftime("%m/%d/%Y")
-        curve_date_str_nor = curve_date.strftime("%Y/%m/%d")
-
-        builder.add_let(f'ATTR x{counter} = forward_curve({symbols[0]},"{column}","{curve_date_str}","","","days","",0 day ago)')
-        builder.add_show(f'{curve_date_str_nor}: x{counter}')
+        builder.add_let(f'ATTR x{counter} = forward_curve({symbol},"{column}","{curve_date:{LIM_DATETIME_FORMAT}}","","","days","",0 day ago)')
+        builder.add_show(f'{curve_date:%Y/%m/%d}: x{counter}')
         builder.add_when(f'x{counter} is DEFINED')
     builder.whens_to_or()
     return str(builder)
@@ -200,7 +198,7 @@ def build_structure_query(
 
     when = ''
     if start_date is not None:
-        when = f' when date is after {start_date:%m/%d/%Y}'
+        when = f' when date is after {start_date:{LIM_DATETIME_FORMAT}}'
     query = f'Show M{mx}-M{my}: ({cx}) - ({cy}){when}'
     return query
 
