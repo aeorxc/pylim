@@ -6,7 +6,9 @@ import typing as t
 from collections.abc import Sequence
 from datetime import date
 from functools import lru_cache
+from itertools import chain
 from urllib.request import getproxies
+from urllib.parse import urljoin
 
 import pandas as pd
 import requests
@@ -44,7 +46,7 @@ def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.Data
         raise Exception('Run out of tries')
 
     r = f'<DataRequest><Query><Text>{q}</Text></Query></DataRequest>'
-    base_url = f'{limServer}/rs/api/datarequests'
+    base_url = urljoin(limServer, f'/rs/api/datarequests')
     if id is None:
         response = session.post(base_url, data=r)
     else:
@@ -202,21 +204,25 @@ def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None
     return df
 
 
-@lru_cache(maxsize=None)
-def relations(symbol: str, show_children: bool = False, show_columns: bool = False, desc: bool = False,
-              date_range: bool = False) -> pd.DataFrame:
+@lru_cache
+def relations(
+    symbol: t.Union[str, t.Iterable],
+    show_children: bool = False,
+    show_columns: bool = False,
+    desc: bool = False,
+    date_range: bool = False,
+) -> pd.DataFrame:
     """
     Given a list of symbols call API to get Tree Relations, return as response.
     """
     if is_sequence(symbol):
-        symbol = set(symbol)
-        symbol = ','.join(symbol)
-    url = f'{limServer}/rs/api/schema/relations/{symbol}'
+        symbol = ','.join(set(symbol))
+    url = urljoin(limServer, f'/rs/api/schema/relations/{symbol}')
     params = {
-        'showChildren': 'true' if show_children else 'false',
-        'showColumns': 'true' if show_columns else 'false',
-        'desc': 'true' if desc else 'false',
-        'dateRange': 'true' if date_range else 'false',
+        'showChildren': str(show_children).lower(),
+        'showColumns': str(show_columns).lower(),
+        'desc': str(desc).lower(),
+        'dateRange': str(date_range).lower(),
     }
     response = session.get(url, params=params)
     try:
@@ -230,16 +236,15 @@ def relations(symbol: str, show_children: bool = False, show_columns: bool = Fal
         df = limutils.relinfo_children(df, root)
     if date_range:
         df = limutils.relinfo_daterange(df, root)
-    df.columns = df.loc['name']  # make symbol names header
+    # Make symbol names the header.
+    df.columns = df.loc['name']
     return df
 
 
-@lru_cache(maxsize=None)
+@lru_cache
 def find_symbols_in_path(path: str) -> list:
     """
-    Given a path in the LIM tree hierarchy, find all symbols in that path
-    :param path:
-    :return:
+    Given a path in the LIM tree hierarchy, find all symbols in that path.
     """
     symbols = []
     df = relations(path, show_children=True)
@@ -252,27 +257,25 @@ def find_symbols_in_path(path: str) -> list:
             if row.type == 'CATEGORY':
                 rec_symbols = find_symbols_in_path(f'{path}:{row["name"]}')
                 symbols = symbols + rec_symbols
-
     return symbols
 
 
-@lru_cache(maxsize=None)
+@lru_cache
 def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) -> list:
     """
     Given a symbol pull all futures contracts related to it.
     """
     response = relations(symbol, show_children=True)
-    if response is not None:
-        children = response.loc['children']
-        contracts = []
-        for symbol in response.columns:
-            contracts = contracts + list(children[symbol]['name'])
-        if monthly_contracts_only:
-            contracts = [x for x in contracts if re.findall(r'\d\d\d\d\w', x)]
-        return contracts
+    children = response.loc['children']
+    contracts = chain.from_iterable(
+        children[symbol]['name'].to_list() for symbol in response.columns
+    )
+    if monthly_contracts_only:
+        return [c for c in contracts if re.findall(r'\d\d\d\d\w', c)]
+    return list(contracts_new)
 
 
-@lru_cache(maxsize=None)
+@lru_cache
 def find_symbols_in_query(q: str) -> list:
     m = re.findall(r'\w[a-zA-Z0-9_]+', q)
     if 'Show' in m:
@@ -281,3 +284,4 @@ def find_symbols_in_query(q: str) -> list:
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
     if len(rel) > 0:
         return list(rel['name'])
+    return []

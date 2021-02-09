@@ -1,10 +1,13 @@
-from datetime import datetime
-from lxml import etree
-import lxml.builder
-import time
-import requests
 import logging
+import time
+from datetime import datetime
+from urllib.parse import urljoin
+
+import lxml.builder
 import pandas as pd
+import requests
+from lxml import etree
+
 from pylim import lim
 
 
@@ -16,7 +19,7 @@ default_column = 'TopColumn:Price:Close'
 
 
 def check_upload_status(job_id):
-    url = f'{lim.limServer}/rs/upload/jobreport/{job_id}'
+    url = urljoin(lim.limServer, f'/rs/upload/jobreport/{job_id}')
     response = lim.session.get(url)
     try:
         response.raise_for_status()
@@ -34,7 +37,7 @@ def check_upload_status(job_id):
         message_el = status_el.find('message')
         if message_el is not None:
             msg = message_el.text
-        if code not in ['200', '201', '300', '302']:
+        if code not in {'200', '201', '300', '302'}:
             logging.warning(f'job id {job_id}: code:{code} msg: {msg}')
         return code, msg
 
@@ -91,7 +94,7 @@ def chunks(lst, n):
 
 
 def upload_chunk(df, dfmeta):
-    url = f'{lim.limServer}/rs/upload'
+    url = urljoin(lim.limServer, '/rs/upload')
     params = {
         'username': lim.limUserName,
         'parsername': 'DefaultParser',
@@ -113,7 +116,7 @@ def upload_chunk(df, dfmeta):
         logging.debug(f'Submitted job id: {job_id}')
         for i in range(0, lim.calltries):
             code, msg = check_upload_status(job_id)
-            if code in ['200', '201', '300', '302']:
+            if code in {'200', '201', '300', '302'}:
                 return msg
             time.sleep(lim.sleep)
 
