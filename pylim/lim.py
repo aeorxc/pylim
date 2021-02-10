@@ -5,14 +5,15 @@ import time
 import typing as t
 from collections.abc import Sequence
 from datetime import date
-from functools import lru_cache
 from itertools import chain
-from urllib.request import getproxies
 from urllib.parse import urljoin
+from urllib.request import getproxies
 
 import pandas as pd
 import requests
 from lxml import etree
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 from pylim import limutils
 from pylim import limqueryutils
@@ -28,11 +29,26 @@ headers = {
     'Content-Type': 'application/xml',
 }
 
-# HTTP Session object configured for requesting data from LIM API.
-session = requests.Session()
-session.proxies = getproxies()
-session.headers = headers
-session.auth = (limUserName, limPassword)
+
+def get_session():
+    """
+    HTTP Session object configured for requesting data from LIM API.
+    """
+    retry_adapter = HTTPAdapter(
+        max_retries=Retry(
+            total=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            method_whitelist=["HEAD", "GET", "OPTIONS"],
+            backoff_factor=2,
+        ),
+    )
+    session = requests.Session()
+    session.auth = (limUserName, limPassword)
+    session.headers = headers
+    session.proxies = getproxies()
+    session.mount("http://", retry_adapter)
+    session.mount("https://", retry_adapter)
+    return session
 
 
 def is_sequence(obj: t.Any) -> bool:
@@ -47,10 +63,11 @@ def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.Data
 
     r = f'<DataRequest><Query><Text>{q}</Text></Query></DataRequest>'
     base_url = urljoin(limServer, f'/rs/api/datarequests')
-    if id is None:
-        response = session.post(base_url, data=r)
-    else:
-        response = session.get(f'{base_url}/{id}')
+    with get_session() as session:
+        if id is None:
+            response = session.post(base_url, data=r)
+        else:
+            response = session.get(f'{base_url}/{id}')
     try:
         response.raise_for_status()
     except requests.RequestException:
@@ -204,9 +221,8 @@ def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None
     return df
 
 
-@lru_cache
 def relations(
-    symbol: t.Union[str, t.Iterable],
+    symbol: t.Union[str, t.Tuple],
     show_children: bool = False,
     show_columns: bool = False,
     desc: bool = False,
@@ -224,7 +240,8 @@ def relations(
         'desc': str(desc).lower(),
         'dateRange': str(date_range).lower(),
     }
-    response = session.get(url, params=params)
+    with get_session() as session:
+        response = session.get(url, params=params)
     try:
         response.raise_for_status()
     except requests.RequestException:
@@ -241,7 +258,6 @@ def relations(
     return df
 
 
-@lru_cache
 def find_symbols_in_path(path: str) -> list:
     """
     Given a path in the LIM tree hierarchy, find all symbols in that path.
@@ -260,7 +276,6 @@ def find_symbols_in_path(path: str) -> list:
     return symbols
 
 
-@lru_cache
 def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) -> list:
     """
     Given a symbol pull all futures contracts related to it.
@@ -275,7 +290,6 @@ def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) 
     return list(contracts_new)
 
 
-@lru_cache
 def find_symbols_in_query(q: str) -> list:
     m = re.findall(r'\w[a-zA-Z0-9_]+', q)
     if 'Show' in m:

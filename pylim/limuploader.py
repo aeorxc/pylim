@@ -18,9 +18,9 @@ upload_headers = {
 default_column = 'TopColumn:Price:Close'
 
 
-def check_upload_status(job_id):
+def check_upload_status(session, job_id):
     url = urljoin(lim.limServer, f'/rs/upload/jobreport/{job_id}')
-    response = lim.session.get(url)
+    response = session.get(url)
     try:
         response.raise_for_status()
     except requests.RequestException:
@@ -93,7 +93,14 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-def upload_chunk(df, dfmeta):
+def upload_chunk(session, df, dfmeta):
+    """
+    Upload dataframe to MorningStar.
+
+    :param session: Requests HTTP session to reuse.
+    :param df: DataFrame to upload.
+    :param dfmeta: DataFrame's metadata.
+    """
     url = urljoin(lim.limServer, '/rs/upload')
     params = {
         'username': lim.limUserName,
@@ -101,7 +108,7 @@ def upload_chunk(df, dfmeta):
     }
     res = build_upload_xml(df, dfmeta)
     logging.info(f'Uploading chunk to {url}')
-    response = lim.session.post(url, data=res, headers=upload_headers, params=params)
+    response = session.post(url, data=res, headers=upload_headers, params=params)
     try:
         response.raise_for_status()
     except requests.RequestException:
@@ -115,7 +122,7 @@ def upload_chunk(df, dfmeta):
         job_id = root.attrib['jobID']
         logging.debug(f'Submitted job id: {job_id}')
         for i in range(0, lim.calltries):
-            code, msg = check_upload_status(job_id)
+            code, msg = check_upload_status(session, job_id)
             if code in {'200', '201', '300', '302'}:
                 return msg
             time.sleep(lim.sleep)
@@ -125,5 +132,6 @@ def upload_series(df, dfmeta, max_chunk_size: int = 1000):
     if not len(df.columns):
         return
     chunk_size = int(round(len(df) / max_chunk_size, 0)) or 1
-    for chunk in chunks(df, chunk_size):
-        upload_chunk(chunk, dfmeta)
+    with lim.get_session() as session:
+        for chunk in chunks(df, chunk_size):
+            upload_chunk(session, chunk, dfmeta)
