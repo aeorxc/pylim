@@ -37,9 +37,9 @@ def get_session():
     retry_adapter = HTTPAdapter(
         max_retries=Retry(
             total=3,
-            status_forcelist=[429, 500, 502, 503, 504],
-            method_whitelist=["HEAD", "GET", "OPTIONS"],
             backoff_factor=2,
+            allowed_methods=["HEAD", "GET", "OPTIONS"],
+            status_forcelist=[429, 500, 502, 503, 504],
         ),
     )
     session = requests.Session()
