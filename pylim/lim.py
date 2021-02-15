@@ -12,8 +12,6 @@ from urllib.request import getproxies
 import pandas as pd
 import requests
 from lxml import etree
-import aiohttp
-import asyncio
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -36,19 +34,20 @@ def get_session():
     """
     HTTP Session object configured for requesting data from LIM API.
     """
-    # retry_adapter = HTTPAdapter(
-    #     max_retries=Retry(
-    #         total=3,
-    #         backoff_factor=2,
-    #         allowed_methods=["HEAD", "GET", "OPTIONS"],
-    #         status_forcelist=[429, 500, 502, 503, 504],
-    #     ),
-    # )
-    auth = aiohttp.BasicAuth(limUserName, limPassword)
-    session = aiohttp.ClientSession(headers=headers, auth=auth)
-    #session.proxies = getproxies()
-    # session.mount("http://", retry_adapter)
-    # session.mount("https://", retry_adapter)
+    retry_adapter = HTTPAdapter(
+        max_retries=Retry(
+            total=3,
+            backoff_factor=2,
+            allowed_methods=["HEAD", "GET", "OPTIONS"],
+            status_forcelist=[429, 500, 502, 503, 504],
+        ),
+    )
+    session = requests.Session()
+    session.auth = (limUserName, limPassword)
+    session.headers = headers
+    session.proxies = getproxies()
+    session.mount("http://", retry_adapter)
+    session.mount("https://", retry_adapter)
     return session
 
 
@@ -58,42 +57,40 @@ def is_sequence(obj: t.Any) -> bool:
     return isinstance(obj, Sequence)
 
 
-async def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.DataFrame:
+def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.DataFrame:
     if tries == 0:
         raise Exception('Run out of tries')
 
     r = f'<DataRequest><Query><Text>{q}</Text></Query></DataRequest>'
     base_url = urljoin(limServer, f'/rs/api/datarequests')
-    # with get_session() as session:
-
-    async with get_session() as session:
+    with get_session() as session:
         if id is None:
-            response = await session.post(base_url, data=r)
+            response = session.post(base_url, data=r)
         else:
-            response = await session.get(f'{base_url}/{id}')
-        try:
-            response.raise_for_status()
-        except requests.RequestException:
-            logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
-            raise
+            response = session.get(f'{base_url}/{id}')
+    try:
+        response.raise_for_status()
+    except requests.RequestException:
+        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
+        raise
 
-        t = await response.text()
-        root = etree.fromstring(t.encode('utf-8'))
-        req_status = int(root.attrib['status'])
-        if req_status == 100:
-            res = limutils.build_dataframe(root[0])
-            return res
-        elif req_status == 110:
-            logging.info('Invalid query')
-            raise Exception(root.attrib['statusMsg'])
-        elif req_status == 130:
-            logging.info('No data')
-        elif req_status == 200:
-            logging.debug('Not complete')
-            reqId = int(root.attrib['id'])
-            return await query(q, reqId, tries - 1)
-        else:
-            raise Exception(root.attrib['statusMsg'])
+    root = etree.fromstring(response.text.encode('utf-8'))
+    req_status = int(root.attrib['status'])
+    if req_status == 100:
+        res = limutils.build_dataframe(root[0])
+        return res
+    elif req_status == 110:
+        logging.info('Invalid query')
+        raise Exception(root.attrib['statusMsg'])
+    elif req_status == 130:
+        logging.info('No data')
+    elif req_status == 200:
+        logging.debug('Not complete')
+        reqId = int(root.attrib['id'])
+        time.sleep(sleep)
+        return query(q, reqId, tries - 1)
+    else:
+        raise Exception(root.attrib['statusMsg'])
 
 
 def series(symbols: t.Union[str, dict, tuple], start_date: t.Optional[t.Union[str, date]] = None) -> pd.DataFrame:

@@ -11,15 +11,15 @@ def current_year() -> int:
     yield date.today().year
 
 
-async def test_lim_query():
+def test_lim_query():
     q = 'Show \r\nFB: FB FP: FP when date is after 2019'
-    res = await lim.query(q)
+    res = lim.query(q)
     assert res is not None
     assert 'FB' in res.columns
     assert 'FP' in res.columns
 
 
-async def test_extended_query():
+def test_extended_query():
     q = '''
     LET
     FP = FP(ROLLOVER_DATE = "5 days before expiration day",ROLLOVER_POLICY = "actual prices")
@@ -29,7 +29,7 @@ async def test_extended_query():
     FP: FP
     FP_02: FP_M2
     '''
-    res = await lim.query(q)
+    res = lim.query(q)
     assert res is not None
     assert 'FP' in res.columns
     assert 'FP_02' in res.columns
@@ -183,13 +183,3 @@ def test_find_symbols_in_query():
     r = lim.find_symbols_in_query(q)
     assert 'FP' in r
     assert 'FB' in r
-
-
-async def run():
-    # await test_lim_query()
-    await test_extended_query()
-
-if __name__ == '__main__':
-   import asyncio
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(run())
