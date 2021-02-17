@@ -23,7 +23,7 @@ limUserName = os.environ['LIMUSERNAME'].replace('"', '')
 limPassword = os.environ['LIMPASSWORD'].replace('"', '')
 
 calltries = 50
-sleep = 2.5
+sleep = 0.5
 
 headers = {
     'Content-Type': 'application/xml',
