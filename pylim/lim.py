@@ -186,20 +186,15 @@ def continuous_futures_rollover(
     return res
 
 
-def contracts(
+def _contracts(
     formula: str,
-    start_year: t.Optional[int] = None,
-    end_year: t.Optional[int] = None,
-    months: t.Optional[t.Tuple[str, ...]] = None,
+    matches: t.Tuple[str, ...],
+    contracts_list: t.Tuple[str, ...],
     start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
-    matches = find_symbols_in_query(formula)
-    contracts = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
-    contracts = limutils.filter_contracts(contracts, start_year=start_year, end_year=end_year, months=months)
-
     s = []
     for match in matches:
-        r = [x.split('_')[-1] for x in contracts if match in x]
+        r = [x.split('_')[-1] for x in contracts_list if match in x]
         s.append(set(r))
 
     common_contacts = list(set(s[0].intersection(*s)))
@@ -209,6 +204,20 @@ def contracts(
     )
     df = query(q)
     return df
+
+
+def contracts(
+    formula: str,
+    start_year: t.Optional[int] = None,
+    end_year: t.Optional[int] = None,
+    months: t.Optional[t.Tuple[str, ...]] = None,
+    start_date: t.Optional[date] = None,
+) -> pd.DataFrame:
+    matches = find_symbols_in_query(formula)
+    contracts_list = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
+    contracts_list = limutils.filter_contracts(contracts_list, start_year=start_year, end_year=end_year, months=months)
+
+    return _contracts(formula, matches=matches, contracts_list=contracts_list, start_date=start_date)
 
 
 def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None) -> pd.DataFrame:
