@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import date
+from datetime import timedelta
 
 import pytest
 
@@ -11,7 +12,11 @@ def test_upload_series():
     # Arrange.
     spot_price1 = 1.21
     spot_price2 = 4.89
-    today = date.today() 
+    today = date.today()
+    # don't work with weekends so make weekday
+    if today.weekday() == 5 or today.weekday() == 6:
+        today = today + timedelta(days=-2)
+
     data = {
         'TopRelation:Test:SPOTPRICE1;TopColumn:Price:Close': spot_price1,
         'TopRelation:Test:SPOTPRICE2': spot_price2,
