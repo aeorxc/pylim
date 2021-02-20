@@ -81,7 +81,7 @@ def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.Data
         return res
     elif req_status == 110:
         logging.info('Invalid query')
-        raise Exception(root.attrib['statusMsg'])
+        raise requests.HTTPError(root.attrib['statusMsg'], response=root.attrib['statusMsg'])
     elif req_status == 130:
         logging.info('No data')
     elif req_status == 200:
@@ -289,14 +289,14 @@ def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) 
     """
     Given a symbol pull all futures contracts related to it.
     """
-    response = relations(symbol, show_children=True)
+    response = relations(symbol, show_children=True).T
+    response = response[(response.hasChildren == '1') & (pd.notnull(response.children))].T
     children = response.loc['children']
-    contracts = chain.from_iterable(
-        children[symbol]['name'].to_list() for symbol in response.columns
-    )
+    children = pd.concat(children.values)
+    contracts_list = list(children.name.values)
     if monthly_contracts_only:
-        return [c for c in contracts if re.findall(r'\d\d\d\d\w', c)]
-    return list(contracts_new)
+        contracts_list = [c for c in contracts_list if re.findall(r'\d\d\d\d\w', c)]
+    return contracts_list
 
 
 def find_symbols_in_query(q: str) -> list:

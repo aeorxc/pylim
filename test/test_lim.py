@@ -35,6 +35,11 @@ def test_extended_query():
     assert 'FP_02' in res.columns
 
 
+def test_invalid_query():
+    with pytest.raises(lim.requests.HTTPError):
+        _ = lim.query('Show 1: Something + Else')
+
+
 def test_series():
     res = lim.series('FP_2020J', start_date=date(2020, 1, 1))
     assert res['FP_2020J']['2020-01-02'] == 608.5
