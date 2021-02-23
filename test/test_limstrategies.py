@@ -84,10 +84,3 @@ def test_fly2():
     res = limstrategies.fly('Show 1: FP/7.45-FB', x=1, y=2, z=3, start_year=2019, end_year=2020, start_date='2019-01-01')
     assert res[2020]['2019-01-02'] == pytest.approx(0.023, abs=0.01)
 
-
-def test_structure1():
-    res = limstrategies.structure('Show 1: FP/7.45-FB', 1, 2, start_date=pd.to_datetime('2020-01-01'))
-    assert res['M1-M2'][pd.to_datetime('2020-01-02')] == pytest.approx(-0.656, abs=0.01)
-
-    res = limstrategies.structure('Show 1: FP/7.45-FB', 1, 12, start_date=pd.to_datetime('2020-01-01'))
-    assert res['M1-M12'][pd.to_datetime('2020-01-02')] == pytest.approx(-1.18, abs=0.01)

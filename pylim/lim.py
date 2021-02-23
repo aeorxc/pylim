@@ -221,13 +221,12 @@ def contracts(
 
 
 def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None) -> pd.DataFrame:
-    sx = limqueryutils.continuous_convention(symbol, symbol, mx=mx)
-    sy = limqueryutils.continuous_convention(symbol, symbol, mx=my)
+    matches = find_symbols_in_query(symbol)
+    clause = limqueryutils.extract_clause(symbol)
 
-    df = series([sx, sy], start_date=start_date)
-    df[f'M{mx}-M{my}'] = df[sx] - df[sy]
-
-    return df
+    q = limqueryutils.build_structure_query(clause, matches, mx, my, start_date)
+    res = query(q)
+    return res
 
 
 def relations(

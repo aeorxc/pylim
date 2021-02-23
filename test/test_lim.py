@@ -141,14 +141,23 @@ def test_cont_futures_rollover():
 
 
 def test_structure1():
-    res = lim.structure('FB', 1, 2, start_date='2020-01-01')
+    res = lim.structure('FB', 1, 2, start_date=pd.to_datetime('2020-01-01'))
     assert res['M1-M2'][pd.to_datetime('2020-01-02')] == pytest.approx(0.689, abs=0.01)
 
 
 def test_structure2():
-    res = lim.structure('FB', 1, 12, start_date='2020-01-01')
+    res = lim.structure('FB', 1, 12, start_date=pd.to_datetime('2020-01-01'))
     assert res['M1-M12'][pd.to_datetime('2020-01-02')] == pytest.approx(5.31)
 
+
+def test_structure3():
+    res = lim.structure('Show 1: FP/7.45-FB', 1, 2, start_date=pd.to_datetime('2020-01-01'))
+    assert res['M1-M2'][pd.to_datetime('2020-01-02')] == pytest.approx(-0.656, abs=0.01)
+
+
+def test_structure4():
+    res = lim.structure('Show 1: FP/7.45-FB', 1, 12, start_date=pd.to_datetime('2020-01-01'))
+    assert res['M1-M12'][pd.to_datetime('2020-01-02')] == pytest.approx(-1.18, abs=0.01)
 
 def test_metadata():
     symbols = ('FB', 'PCAAS00', 'PUMFE03', 'PJABA00')

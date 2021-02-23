@@ -96,14 +96,3 @@ def multi_spread(symbol, spreads, start_year: datetime.date.today().year = None,
     res = pd.concat(dfs, 1)
     return res
 
-
-def structure(symbol: str, mx: int, my: int, start_date: t.Optional[datetime.date] = None) -> pd.DataFrame:
-    if not symbol.lower().startswith('show'):
-        return lim.structure(symbol, mx, my, start_date=start_date)
-
-    matches = lim.find_symbols_in_query(symbol)
-    clause = lqu.extract_clause(symbol)
-
-    q = lqu.build_structure_query(clause, matches, mx, my, start_date)
-    res = lim.query(q)
-    return res
