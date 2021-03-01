@@ -1,96 +1,23 @@
 import logging
-import os
 import re
-import time
 import typing as t
 from collections.abc import Sequence
 from datetime import date
 from itertools import chain
-from urllib.parse import urljoin
-from urllib.request import getproxies
 
 import pandas as pd
 import requests
 from lxml import etree
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 
 from pylim import limutils
 from pylim import limqueryutils
-
-limServer = os.environ['LIMSERVER'].replace('"', '')
-limUserName = os.environ['LIMUSERNAME'].replace('"', '')
-limPassword = os.environ['LIMPASSWORD'].replace('"', '')
-
-calltries = 50
-sleep = 0.5
-
-headers = {
-    'Content-Type': 'application/xml',
-}
-
-
-def get_session():
-    """
-    HTTP Session object configured for requesting data from LIM API.
-    """
-    retry_adapter = HTTPAdapter(
-        max_retries=Retry(
-            total=3,
-            backoff_factor=2,
-            allowed_methods=["HEAD", "GET", "OPTIONS"],
-            status_forcelist=[429, 500, 502, 503, 504],
-        ),
-    )
-    session = requests.Session()
-    session.auth = (limUserName, limPassword)
-    session.headers = headers
-    session.proxies = getproxies()
-    session.mount("http://", retry_adapter)
-    session.mount("https://", retry_adapter)
-    return session
+from pylim.core import get_lim_session, query
 
 
 def is_sequence(obj: t.Any) -> bool:
     if isinstance(obj, str):
         return False
     return isinstance(obj, Sequence)
-
-
-def query(q: str, id: t.Optional[int] = None, tries: int = calltries) -> pd.DataFrame:
-    if tries == 0:
-        raise Exception('Run out of tries')
-
-    r = f'<DataRequest><Query><Text>{q}</Text></Query></DataRequest>'
-    base_url = urljoin(limServer, f'/rs/api/datarequests')
-    with get_session() as session:
-        if id is None:
-            response = session.post(base_url, data=r)
-        else:
-            response = session.get(f'{base_url}/{id}')
-    try:
-        response.raise_for_status()
-    except requests.RequestException:
-        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
-        raise
-
-    root = etree.fromstring(response.text.encode('utf-8'))
-    req_status = int(root.attrib['status'])
-    if req_status == 100:
-        res = limutils.build_dataframe(root[0])
-        return res
-    elif req_status == 110:
-        logging.info('Invalid query')
-        raise requests.HTTPError(root.attrib['statusMsg'], response=root.attrib['statusMsg'])
-    elif req_status == 130:
-        logging.info('No data')
-    elif req_status == 200:
-        logging.debug('Not complete')
-        reqId = int(root.attrib['id'])
-        time.sleep(sleep)
-        return query(q, reqId, tries - 1)
-    else:
-        raise Exception(root.attrib['statusMsg'])
 
 
 def series(symbols: t.Union[str, dict, tuple], start_date: t.Optional[t.Union[str, date]] = None) -> pd.DataFrame:
@@ -214,7 +141,7 @@ def contracts(
     start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
     matches = find_symbols_in_query(formula)
-    contracts_list = get_symbol_contract_list(tuple(matches), monthly_contracts_only=True)
+    contracts_list = get_symbol_contract_list(matches, monthly_contracts_only=True)
     contracts_list = limutils.filter_contracts(contracts_list, start_year=start_year, end_year=end_year, months=months)
 
     return _contracts(formula, matches=matches, contracts_list=contracts_list, start_date=start_date)
@@ -230,7 +157,7 @@ def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None
 
 
 def relations(
-    symbol: t.Union[str, t.Tuple],
+    symbol: t.Union[str, t.Tuple[str, ...]],
     show_children: bool = False,
     show_columns: bool = False,
     desc: bool = False,
@@ -241,20 +168,15 @@ def relations(
     """
     if is_sequence(symbol):
         symbol = ','.join(set(symbol))
-    url = urljoin(limServer, f'/rs/api/schema/relations/{symbol}')
+    url = f'/rs/api/schema/relations/{symbol}'
     params = {
         'showChildren': str(show_children).lower(),
         'showColumns': str(show_columns).lower(),
         'desc': str(desc).lower(),
         'dateRange': str(date_range).lower(),
     }
-    with get_session() as session:
+    with get_lim_session() as session:
         response = session.get(url, params=params)
-    try:
-        response.raise_for_status()
-    except requests.RequestException:
-        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
-        raise
     root = etree.fromstring(response.text.encode('utf-8'))
     df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], 1, sort=False)
     if show_children:
@@ -278,13 +200,16 @@ def find_symbols_in_path(path: str) -> list:
         for i, row in children.iterrows():
             if row.type == 'FUTURES' or row.type == 'NORMAL':
                 symbols.append(row['name'])
-            if row.type == 'CATEGORY':
+            elif row.type == 'CATEGORY':
                 rec_symbols = find_symbols_in_path(f'{path}:{row["name"]}')
                 symbols = symbols + rec_symbols
     return symbols
 
 
-def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) -> list:
+def get_symbol_contract_list(
+    symbol: t.Union[str, t.Tuple[str, ...]],
+    monthly_contracts_only: bool = False,
+) -> list:
     """
     Given a symbol pull all futures contracts related to it.
     """
@@ -298,12 +223,12 @@ def get_symbol_contract_list(symbol: str, monthly_contracts_only: bool = False) 
     return contracts_list
 
 
-def find_symbols_in_query(q: str) -> list:
+def find_symbols_in_query(q: str) -> tuple:
     m = re.findall(r'\w[a-zA-Z0-9_]+', q)
     if 'Show' in m:
         m.remove('Show')
     rel = relations(tuple(m)).T
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
     if len(rel) > 0:
-        return list(rel['name'])
-    return []
+        return tuple(rel['name'])
+    return ()

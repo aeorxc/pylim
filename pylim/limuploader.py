@@ -1,36 +1,26 @@
 import logging
 import time
 from datetime import datetime
-from urllib.parse import urljoin
 
 import lxml.builder
 import pandas as pd
 import requests
 from lxml import etree
 
-from pylim import lim
+from pylim.core import get_lim_session
 
-
-upload_headers = {
-    'Content-Type': 'text/xml',
-}
-
+sleep_time = 0.5
+calltries = 50
+upload_headers = {'Content-Type': 'text/xml'}
 default_column = 'TopColumn:Price:Close'
 
 
-def check_upload_status(session, job_id):
-    url = urljoin(lim.limServer, f'/rs/upload/jobreport/{job_id}')
-    response = session.get(url)
-    try:
-        response.raise_for_status()
-    except requests.RequestException:
-        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
-        raise
-
+def check_upload_status(session: requests.Session, job_id: int):
+    response = session.get(f"/rs/upload/jobreport/{job_id}")
+    code, msg = '', ''
     root = etree.fromstring(response.text.encode('utf-8'))
     status_el = root.find('status')
     if status_el is not None:
-        code, msg = '', ''
         code_el = status_el.find('code')
         if code_el is not None:
             code = code_el.text
@@ -39,7 +29,7 @@ def check_upload_status(session, job_id):
             msg = message_el.text
         if code not in {'200', '201', '300', '302'}:
             logging.warning(f'job id {job_id}: code:{code} msg: {msg}')
-        return code, msg
+    return code, msg
 
 
 def build_upload_xml(df, dfmeta):
@@ -80,7 +70,8 @@ def build_upload_xml(df, dfmeta):
 
     irow = ROOT()
     xROWS = ROWS()
-    [xROWS.append(x) for x in entries]
+    for x in entries:
+        xROWS.append(x)
     irow.append(xROWS)
 
     res = lxml.etree.tostring(irow, pretty_print=True)
@@ -93,7 +84,7 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-def upload_chunk(session, df, dfmeta):
+def upload_chunk(session, df, dfmeta, chunk_id: int):
     """
     Upload dataframe to MorningStar.
 
@@ -101,18 +92,15 @@ def upload_chunk(session, df, dfmeta):
     :param df: DataFrame to upload.
     :param dfmeta: DataFrame's metadata.
     """
-    url = urljoin(lim.limServer, '/rs/upload')
     params = {
-        'username': lim.limUserName,
+        'username': session.auth[0],
         'parsername': 'DefaultParser',
     }
     res = build_upload_xml(df, dfmeta)
-    logging.info(f'Uploading chunk to {url}')
-    response = session.post(url, data=res, headers=upload_headers, params=params)
+    logging.debug(f'Uploading chunk #{chunk_id} to LIM')
     try:
-        response.raise_for_status()
+        response = session.post("/rs/upload", data=res, headers=upload_headers, params=params)
     except requests.RequestException:
-        logging.error(f'Received response: Code: {response.status_code} Msg: {response.text}')
         logging.error(f'For chunk head: \n{df.head()}')
         logging.error(f'For chunk tail: \n{df.tail()}')
         raise
@@ -121,17 +109,17 @@ def upload_chunk(session, df, dfmeta):
     if intStatus == '202':
         job_id = root.attrib['jobID']
         logging.debug(f'Submitted job id: {job_id}')
-        for i in range(0, lim.calltries):
+        for i in range(0, calltries):
             code, msg = check_upload_status(session, job_id)
             if code in {'200', '201', '300', '302'}:
                 return msg
-            time.sleep(lim.sleep)
+            time.sleep(sleep_time)
 
 
 def upload_series(df, dfmeta, max_chunk_size: int = 1000):
     if not len(df.columns):
         return
     chunk_size = int(round(len(df) / max_chunk_size, 0)) or 1
-    with lim.get_session() as session:
-        for chunk in chunks(df, chunk_size):
-            upload_chunk(session, chunk, dfmeta)
+    with get_lim_session() as session:
+        for i, chunk in enumerate(chunks(df, chunk_size), start=1):
+            upload_chunk(session, chunk, dfmeta, i)
