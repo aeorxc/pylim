@@ -95,7 +95,7 @@ def build_series_query(
 
 
 def build_curve_query(
-    symbols: t.Tuple[str, ...], curve_date: t.Optional[date] = None, column: str = 'Close', curve_formula: t.Optional[str] = None
+    symbols: t.Tuple[str, ...], curve_date: t.Optional[date] = None, column: str = 'Close', curve_formula_str: t.Optional[str] = None
 ) -> str:
     """
     Build query for multiple symbols and a single curve date.
@@ -108,12 +108,12 @@ def build_curve_query(
         builder.add_when(f'x{symbol} is DEFINED')
     builder.whens_to_or()
 
-    if curve_formula is not None:
-        if 'Show' in curve_formula or 'show' in curve_formula:
-            curve_formula = curve_formula.replace('Show', '').replace('show', '')
+    if curve_formula_str is not None:
+        if 'Show' in curve_formula_str or 'show' in curve_formula_str:
+            curve_formula_str = curve_formula_str.replace('Show', '').replace('show', '')
         for symbol in symbols:
-            curve_formula = curve_formula.replace(symbol, f'x{symbol}')
-        builder.add_show(curve_formula)
+            curve_formula_str = curve_formula_str.replace(symbol, f'x{symbol}')
+        builder.add_show(curve_formula_str)
 
     # When no curve date is specified we get a full history so filter it.
     if curve_date is None:

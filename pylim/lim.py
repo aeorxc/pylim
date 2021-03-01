@@ -133,7 +133,7 @@ def curve(
             curve_date = curve_dates[0]
         else:
             curve_date = curve_dates
-        q = limqueryutils.build_curve_query(scall, curve_date, column, curve_formula=curve_formula)
+        q = limqueryutils.build_curve_query(scall, curve_date, column, curve_formula_str=curve_formula)
     res = query(q)
 
     if isinstance(symbols, dict):
