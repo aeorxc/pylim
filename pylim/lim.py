@@ -76,12 +76,14 @@ def curve_formula(
     """
     if matches is None:
         matches = find_symbols_in_query(formula)
-    if curve_dates is None or len(curve_dates) == 1:
+    if curve_dates is None or (is_sequence(curve_dates) and len(curve_dates) == 1):
         if is_sequence(curve_dates):
             curve_dates = curve_dates[0]
         q = limqueryutils.build_curve_query(symbols=matches, curve_date=curve_dates, column=column, curve_formula_str=formula)
         res = query(q)
         res = res.resample('MS').mean()
+        if isinstance(curve_dates, date):
+            res = res[['1']].rename(columns={'1': curve_dates.strftime("%Y/%m/%d")})
     else:
         dfs, res = [], None
         if not is_sequence(curve_dates):
@@ -89,7 +91,7 @@ def curve_formula(
         for d in curve_dates:
             rx = curve_formula(formula, column=column, curve_dates=(d,), matches=matches)
             if rx is not None:
-                rx = rx[['1']].rename(columns={'1': d.strftime("%Y/%m/%d")})
+                rx = rx[[ d.strftime("%Y/%m/%d")]]
                 dfs.append(rx)
         if len(dfs) > 0:
             res = pd.concat(dfs, 1)
