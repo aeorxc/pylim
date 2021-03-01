@@ -1,7 +1,8 @@
 import typing as t
+from typing import Sequence
+
 import pandas as pd
 from commodutil import forwards
-import re
 
 
 def alternate_col_val(values, noCols):
@@ -169,3 +170,9 @@ def pivots_contract_by_year(df):
     df = pd.concat(dfs, 1)
     df = df.reindex(sorted(df.columns), axis=1)
     return df
+
+
+def is_sequence(obj: t.Any) -> bool:
+    if isinstance(obj, str):
+        return False
+    return isinstance(obj, Sequence)

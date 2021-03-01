@@ -77,10 +77,9 @@ def test_curve():
 
 
 def test_curve2():
-    res = lim.curve({'FP': 'GO', 'FB': 'Brent'}, curve_formula='Show 1: FP/7.45-FB')
+    res = lim.curve({'FP': 'GO', 'FB': 'Brent'})
     assert 'GO' in res.columns
     assert 'Brent' in res.columns
-    assert '1' in res.columns
 
 
 def test_curve_history():

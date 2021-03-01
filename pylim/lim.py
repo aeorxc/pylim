@@ -1,23 +1,14 @@
-import logging
 import re
 import typing as t
-from collections.abc import Sequence
 from datetime import date
-from itertools import chain
 
 import pandas as pd
-import requests
 from lxml import etree
 
 from pylim import limutils
 from pylim import limqueryutils
 from pylim.core import get_lim_session, query
-
-
-def is_sequence(obj: t.Any) -> bool:
-    if isinstance(obj, str):
-        return False
-    return isinstance(obj, Sequence)
+from pylim.limutils import is_sequence
 
 
 def series(symbols: t.Union[str, dict, tuple], start_date: t.Optional[t.Union[str, date]] = None) -> pd.DataFrame:
@@ -45,22 +36,23 @@ def curve(
     symbols: t.Union[str, dict, tuple],
     column: str = 'Close',
     curve_dates: t.Optional[t.Union[date, t.Tuple[date, ...]]] = None,
-    curve_formula: str = None,
 ) -> pd.DataFrame:
     scall = symbols
     if isinstance(scall, str):
+        if limqueryutils.is_formula(symbols):
+            return curve_formula(symbols, column=column, curve_dates=curve_dates)
         scall = tuple([scall])
     elif isinstance(scall, dict):
         scall = tuple(scall)
 
-    if curve_formula is None and curve_dates is not None:
+    if curve_dates is not None:
         q = limqueryutils.build_curve_history_query(scall, curve_dates, column)
     else:
         if is_sequence(curve_dates) and len(curve_dates):
             curve_date = curve_dates[0]
         else:
             curve_date = curve_dates
-        q = limqueryutils.build_curve_query(scall, curve_date, column, curve_formula_str=curve_formula)
+        q = limqueryutils.build_curve_query(scall, curve_date, column)
     res = query(q)
 
     if isinstance(symbols, dict):
@@ -75,19 +67,25 @@ def curve_formula(
     formula: str,
     column: str = 'Close',
     curve_dates: t.Optional[t.Tuple[date, ...]] = None,
+    matches: t.Optional[t.Tuple[str, ...]] = None
 ) -> pd.DataFrame:
     """
     Calculate a forward curve using existing symbols.
     """
-    matches = find_symbols_in_query(formula)
-    if curve_dates is None:
-        res = curve(matches, column=column, curve_formula=formula)
+    if matches is None:
+        matches = find_symbols_in_query(formula)
+    if curve_dates is None or len(curve_dates) == 1:
+        if is_sequence(curve_dates):
+            curve_dates = curve_dates[0]
+        q = limqueryutils.build_curve_query(symbols=matches, curve_date=curve_dates, column=column, curve_formula_str=formula)
+        res = query(q)
+        res = res.resample('MS').mean()
     else:
         dfs, res = [], None
         if not is_sequence(curve_dates):
             curve_dates = [curve_dates]
         for d in curve_dates:
-            rx = curve(matches, column=column, curve_dates=d, curve_formula=formula)
+            rx = curve_formula(formula, column=column, curve_dates=(d,), matches=matches)
             if rx is not None:
                 rx = rx[['1']].rename(columns={'1': d.strftime("%Y/%m/%d")})
                 dfs.append(rx)
