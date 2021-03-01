@@ -46,6 +46,8 @@ def curve(
         scall = tuple(scall)
 
     if curve_dates is not None:
+        if not is_sequence(curve_dates):
+            curve_dates = (curve_dates,)
         q = limqueryutils.build_curve_history_query(scall, curve_dates, column)
     else:
         if is_sequence(curve_dates) and len(curve_dates):

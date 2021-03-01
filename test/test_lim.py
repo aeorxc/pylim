@@ -1,5 +1,5 @@
 from datetime import date
-
+import requests
 import pandas as pd
 import pytest
 
@@ -36,7 +36,7 @@ def test_extended_query():
 
 
 def test_invalid_query():
-    with pytest.raises(lim.requests.HTTPError):
+    with pytest.raises(requests.HTTPError):
         _ = lim.query('Show 1: Something + Else')
 
 
@@ -71,15 +71,23 @@ def test_curve():
     assert 'GO' in res.columns
     assert 'Brent' in res.columns
 
-    res = lim.curve('FB', curve_dates=(pd.to_datetime('2020-03-17'),))
-    assert res['2020/03/17']['2020-05-01'] == 28.73
-    assert res['2020/03/17']['2020-08-01'] == 33.25
-
 
 def test_curve2():
     res = lim.curve({'FP': 'GO', 'FB': 'Brent'})
     assert 'GO' in res.columns
     assert 'Brent' in res.columns
+
+
+def test_curve3():
+    res = lim.curve('FB', curve_dates=(pd.to_datetime('2020-03-17'),))
+    assert res['2020/03/17']['2020-05-01'] == 28.73
+    assert res['2020/03/17']['2020-08-01'] == 33.25
+
+
+def test_curve4():
+    res = lim.curve('FB', curve_dates=pd.to_datetime('2020-03-17'))
+    assert res['2020/03/17']['2020-05-01'] == 28.73
+    assert res['2020/03/17']['2020-08-01'] == 33.25
 
 
 def test_curve_history():
