@@ -166,6 +166,7 @@ def test_structure4():
     res = lim.structure('Show 1: FP/7.45-FB', 1, 12, start_date=pd.to_datetime('2020-01-01'))
     assert res['M1-M12'][pd.to_datetime('2020-01-02')] == pytest.approx(-1.18, abs=0.01)
 
+
 def test_metadata():
     symbols = ('FB', 'PCAAS00', 'PUMFE03', 'PJABA00')
     m = lim.relations(symbols, show_columns=True, date_range=True)
