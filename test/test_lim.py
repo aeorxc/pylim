@@ -56,7 +56,7 @@ def test_series3():
 
 
 def test_series4():
-    res = lim.series('PJABA00')
+    res = lim.series('PGABM00')
     assert res['PJABA00']['1990-01-02'] == 246.5
 
 

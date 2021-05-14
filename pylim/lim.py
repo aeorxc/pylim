@@ -61,8 +61,9 @@ def curve(
         res = res.rename(columns=symbols)
 
     # Reindex dates to start of month.
-    res = res.resample('MS').mean()
-    return res
+    if res is not None and len(res) > 0:
+        res = res.resample('MS').mean()
+        return res
 
 
 def curve_formula(
@@ -234,3 +235,10 @@ def find_symbols_in_query(q: str) -> tuple:
     if len(rel) > 0:
         return tuple(rel['name'])
     return ()
+
+
+if __name__ == '__main__':
+    q = 'Show 1: FP/7.45-FB'
+    find_symbols_in_query(q)
+    contracts('NYMEX.CU')
+    # series('PGABM00')
