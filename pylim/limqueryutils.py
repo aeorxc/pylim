@@ -112,7 +112,7 @@ def build_curve_query(
         if 'Show' in curve_formula_str or 'show' in curve_formula_str:
             curve_formula_str = curve_formula_str.replace('Show', '').replace('show', '')
         for symbol in symbols:
-            curve_formula_str = curve_formula_str.replace(symbol, f'x{symbol}')
+            curve_formula_str = re.sub(r'\b%s\b' % symbol, r'x%s' % symbol, curve_formula_str)
         builder.add_show(curve_formula_str)
 
     # When no curve date is specified we get a full history so filter it.
