@@ -59,10 +59,10 @@ def spread(symbol: str, x: t.Tuple[int, str], y: t.Tuple[int, str], z: t.Optiona
     contracts = limutils.convert_lim_contracts_to_datetime(contracts)
 
     if z is not None:
-        if isinstance(x, int) and isinstance(y, int) and isinstance(z, int):
-            return forwards.fly(contracts, x, y, z)
+        if (isinstance(x, int) or x.isnumeric()) and (isinstance(y, int) or y.isnumeric()) and (isinstance(z, int) or z.isnumeric()):
+            return forwards.fly(contracts, int(x), int(y), int(z))
 
-    if isinstance(x, int) and isinstance(y, int):
+    if (isinstance(x, int) or x.isnumeric()) and (isinstance(y, int) or y.isnumeric()):
         return forwards.time_spreads_monthly(contracts, x, y)
 
     if isinstance(x, str) and isinstance(y, str):
