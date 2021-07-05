@@ -86,6 +86,8 @@ def relinfo_daterange(df, root):
 def determine_month(sample):
     if isinstance(sample, int) and sample in forwards.futures_month_conv:
         return forwards.futures_month_conv[sample]
+    if isinstance(sample, str) and sample.isnumeric() and int(sample) in forwards.futures_month_conv:
+        return forwards.futures_month_conv[int(sample)]
     if isinstance(sample, str):
         if sample in forwards.futures_month_conv.values():
             return sample
