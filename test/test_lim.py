@@ -7,11 +7,6 @@ import unittest
 from pylim import lim
 
 
-@pytest.fixture
-def current_year() -> int:
-    yield date.today().year
-
-
 class TestLim(unittest.TestCase):
 
     def test_lim_query(self):
@@ -110,18 +105,18 @@ class TestLim(unittest.TestCase):
         assert 'CL_1998J' in res
         assert 'FB_2020Z' in res
 
-    def test_futures_contracts1(self, current_year: int):
+    def test_futures_contracts1(self):
         res = lim.contracts('FB', start_year=2020, start_date='2020-01-01')
         assert '2020Z' in res.columns
-        assert f'{current_year}Z' in res.columns
+        assert "%sZ" % date.today().year in res.columns
 
-    def test_futures_contracts2(self, current_year: int):
+    def test_futures_contracts2(self):
         res = lim.contracts('FB', months=['Z'], start_date='date is within 5 days')
-        assert f'{current_year}Z' in res.columns
+        assert "%sZ" % date.today().year in res.columns
 
-    def test_futures_contracts_formula(self, current_year: int):
+    def test_futures_contracts_formula(self):
         res = lim.contracts(formula='Show 1: FP/7.45-FB', months=['F'], start_year=2020, start_date='2020-01-01')
-        assert f'{current_year}F' in res.columns
+        assert "%sF" % date.today().year in res.columns
         assert res['2021F']['2020-01-02'] == pytest.approx(16.95, abs=0.01)
 
     def test_cont_futures_rollover(self):
