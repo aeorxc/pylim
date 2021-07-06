@@ -102,10 +102,18 @@ def build_curve_query(
     """
     builder = LimQueryBuilder()
     curve_date_filter = 'LAST' if curve_date is None else f'{curve_date:{LIM_DATETIME_FORMAT}}'
+
+    # pick the first futures symbol for use in let clause where non-futures symbols are used
+    reference_symbol = [x for x in symbols if symbols[x] == 'FUTURES'][0]
+
     for symbol in symbols:
-        builder.add_let(f'ATTR x{symbol} = forward_curve({symbol},"{column}","{curve_date_filter}","","","days","",0 day ago)')
-        builder.add_show(f'{symbol}: x{symbol}')
-        builder.add_when(f'x{symbol} is DEFINED')
+        if symbols[symbol] == 'FUTURES':
+            builder.add_let(f'ATTR x{symbol} = forward_curve({symbol},"{column}","{curve_date_filter}","","","days","",0 day ago)')
+            builder.add_show(f'{symbol}: x{symbol}')
+            builder.add_when(f'x{symbol} is DEFINED')
+        else:
+            builder.add_let(f'ATTR x{symbol} = if x{reference_symbol} is defined then {symbol} ENDIF')
+            builder.add_show(f'{symbol}: x{symbol}')
     builder.whens_to_or()
 
     if curve_formula_str is not None:

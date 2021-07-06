@@ -76,7 +76,7 @@ def curve_formula(
     Calculate a forward curve using existing symbols.
     """
     if matches is None:
-        matches = tuple(find_symbols_in_query(formula).keys())
+        matches = find_symbols_in_query(formula)
     if curve_dates is None or (is_sequence(curve_dates) and len(curve_dates) == 1):
         if is_sequence(curve_dates):
             curve_dates = curve_dates[0]
