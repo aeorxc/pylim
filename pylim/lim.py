@@ -54,7 +54,7 @@ def curve(
             curve_date = curve_dates[0]
         else:
             curve_date = curve_dates
-        q = limqueryutils.build_curve_query(scall, curve_date, column)
+        q = limqueryutils.build_curve_query({x:'FUTURES' for x in scall}, curve_date, column)
     res = query(q)
 
     if isinstance(symbols, dict):
