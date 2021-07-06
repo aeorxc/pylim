@@ -172,8 +172,8 @@ class TestLim(unittest.TestCase):
     def test_find_symbols_in_query(self):
         q = 'Show 1: FP/7.45-FB'
         r = lim.find_symbols_in_query(q)
-        assert 'FP' in r
-        assert 'FB' in r
+        assert r['FP'] == 'FUTURES'
+        assert r['FB'] == 'FUTURES'
 
 
 if __name__ == '__main__':

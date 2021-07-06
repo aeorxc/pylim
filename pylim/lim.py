@@ -76,7 +76,7 @@ def curve_formula(
     Calculate a forward curve using existing symbols.
     """
     if matches is None:
-        matches = find_symbols_in_query(formula)
+        matches = tuple(find_symbols_in_query(formula).keys())
     if curve_dates is None or (is_sequence(curve_dates) and len(curve_dates) == 1):
         if is_sequence(curve_dates):
             curve_dates = curve_dates[0]
@@ -143,7 +143,7 @@ def contracts(
     months: t.Optional[t.Tuple[str, ...]] = None,
     start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
-    matches = find_symbols_in_query(formula)
+    matches = tuple(find_symbols_in_query(formula).keys())
     contracts_list = get_symbol_contract_list(matches, monthly_contracts_only=True)
     contracts_list = limutils.filter_contracts(contracts_list, start_year=start_year, end_year=end_year, months=months)
 
@@ -226,15 +226,14 @@ def get_symbol_contract_list(
     return contracts_list
 
 
-def find_symbols_in_query(q: str) -> tuple:
+def find_symbols_in_query(q: str) -> dict:
     m = re.findall(r'\w[a-zA-Z0-9_.]+', q)
     if 'Show' in m:
         m.remove('Show')
     rel = relations(tuple(m)).T
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
     if len(rel) > 0:
-        return tuple(rel['name'])
-    return ()
+        return rel['type'].to_dict()
 
 
 if __name__ == '__main__':
