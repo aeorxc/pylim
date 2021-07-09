@@ -119,6 +119,11 @@ class TestLim(unittest.TestCase):
         assert "%sF" % date.today().year in res.columns
         assert res['2021F']['2020-01-02'] == pytest.approx(16.95, abs=0.01)
 
+    def test_futures_contracts_formula2(self):
+        res = lim.contracts(formula='Show 1: (FP/7.45-FB) * GBPUSD', months=['F'], start_year=2020, start_date='2020-01-01')
+        assert "%sF" % date.today().year in res.columns
+        assert res['2021F']['2020-01-02'] == pytest.approx(22.2659, abs=0.01)
+
     def test_cont_futures_rollover(self):
         res = lim.continuous_futures_rollover('FB', months=['M1', 'M12'], after_date=2019)
         assert res['M1'][pd.to_datetime('2020-01-02')] == 66.25

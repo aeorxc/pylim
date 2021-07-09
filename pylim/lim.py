@@ -143,11 +143,12 @@ def contracts(
     months: t.Optional[t.Tuple[str, ...]] = None,
     start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
-    matches = tuple(find_symbols_in_query(formula).keys())
-    contracts_list = get_symbol_contract_list(matches, monthly_contracts_only=True)
+    matches = find_symbols_in_query(formula)
+    matches_futures_only = [x for x in matches if matches[x] == 'FUTURES']
+    contracts_list = get_symbol_contract_list(matches_futures_only, monthly_contracts_only=True)
     contracts_list = limutils.filter_contracts(contracts_list, start_year=start_year, end_year=end_year, months=months)
 
-    return _contracts(formula, matches=matches, contracts_list=contracts_list, start_date=start_date)
+    return _contracts(formula, matches=matches_futures_only, contracts_list=contracts_list, start_date=start_date)
 
 
 def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None) -> pd.DataFrame:
