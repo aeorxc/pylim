@@ -101,6 +101,18 @@ def curve_formula(
     return res
 
 
+def query_as_curve(query_text: str):
+    """
+    Given a LIM query that returns a curve, format the return (drop NaN)
+    :param query:
+    :return:
+    """
+    df = query(query_text)
+    df = df.resample('MS').mean()
+    df = df.dropna()
+    return df
+
+
 def continuous_futures_rollover(
     symbol: str,
     months: t.Tuple[str, ...] = ('M1',),

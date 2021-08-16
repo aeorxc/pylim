@@ -35,6 +35,17 @@ class TestLim(unittest.TestCase):
         with pytest.raises(requests.HTTPError):
             _ = lim.query('Show 1: Something + Else')
 
+    def test_lim_query_as_curve(self):
+        q = '''LET
+    ATTR curve0 = forward_curve(FB,"Close","LAST","","","days","",0 day ago)
+    SHOW
+    Last:curve0 1 month ago
+    when date is after 2020
+
+            '''
+        res = lim.query_as_curve(q)
+        assert isinstance(res, pd.DataFrame)
+
     def test_series(self):
         res = lim.series('FP_2020J', start_date=date(2020, 1, 1))
         assert res['FP_2020J']['2020-01-02'] == 608.5
