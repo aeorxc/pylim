@@ -172,6 +172,13 @@ def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None
     return res
 
 
+def candlestick_data(symbol: str, days: int = 90):
+    q = 'Show Close: Close of %s High: High of %s Low: Low of %s Open: Open of %s when date is within %s days' % (
+    symbol, symbol, symbol, symbol, days)
+    df = query(q)
+    return df
+
+
 def relations(
     symbol: t.Union[str, t.Tuple[str, ...]],
     show_children: bool = False,

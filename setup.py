@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="pylim",
-    version="1.5.3",
+    version="1.5.4",
     author="aeorxc",
     description="Wrapper around morningstar commodity (LIM)",
     url="https://github.com/aeorxc/pylim",
