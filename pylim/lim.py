@@ -201,7 +201,7 @@ def relations(
     with get_lim_session() as session:
         response = session.get(url, params=params)
     root = etree.fromstring(response.text.encode('utf-8'))
-    df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], 1, sort=False)
+    df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], axis=1, sort=False)
     if show_children:
         df = limutils.relinfo_children(df, root)
     if date_range:
