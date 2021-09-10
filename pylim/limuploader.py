@@ -18,7 +18,7 @@ default_column = 'TopColumn:Price:Close'
 def check_upload_status(session: requests.Session, job_id: int):
     response = session.get(f"/rs/upload/jobreport/{job_id}")
     code, msg = '', ''
-    root = etree.fromstring(response.text.encode('utf-8'))
+    root = etree.fromstring(response.content)
     status_el = root.find('status')
     if status_el is not None:
         code_el = status_el.find('code')
@@ -99,12 +99,12 @@ def upload_chunk(session, df, dfmeta, chunk_id: int):
     res = build_upload_xml(df, dfmeta)
     logging.debug(f'Uploading chunk #{chunk_id} to LIM')
     try:
-        response = session.post("/rs/upload", data=res, headers=upload_headers, params=params)
+        response = session.post("/rs/api/upload", data=res, headers=upload_headers, params=params)
     except requests.RequestException:
         logging.error(f'For chunk head: \n{df.head()}')
         logging.error(f'For chunk tail: \n{df.tail()}')
         raise
-    root = etree.fromstring(response.text.encode('utf-8'))
+    root = etree.fromstring(response.content)
     intStatus = root.attrib['intStatus']
     if intStatus == '202':
         job_id = root.attrib['jobID']

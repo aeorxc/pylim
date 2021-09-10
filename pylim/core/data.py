@@ -25,7 +25,7 @@ def query(query_text: str) -> pd.DataFrame:
         )
         attempt = 1
         while True:
-            root = etree.fromstring(response.text.encode('utf-8'))
+            root = etree.fromstring(response.content)
             status_code = int(root.attrib["status"])
             if status_code == 100:
                 return build_dataframe(root[0])

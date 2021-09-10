@@ -112,7 +112,7 @@ class TestLim(unittest.TestCase):
         assert 'FB_2020Z' in res
 
     def test_symbol_contracts2(self):
-        res = lim.get_symbol_contract_list(('CL', 'FB'), monthly_contracts_only=True)
+        res = lim.get_symbol_contract_list('CL', 'FB', monthly_contracts_only=True)
         assert 'CL_1998J' in res
         assert 'FB_2020Z' in res
 
@@ -162,7 +162,7 @@ class TestLim(unittest.TestCase):
 
     def test_metadata(self):
         symbols = ('FB', 'PCAAS00', 'PUMFE03', 'PJABA00')
-        m = lim.relations(symbols, show_columns=True, date_range=True)
+        m = lim.relations(*symbols, show_columns=True, date_range=True)
         assert isinstance(m['FB']['daterange'], pd.DataFrame)
         assert 'FB' in m.columns
         assert 'PCAAS00' in m.columns

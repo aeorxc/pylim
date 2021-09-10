@@ -21,7 +21,7 @@ def series(symbols: t.Union[str, dict, tuple], start_date: t.Optional[t.Union[st
     # Get metadata if we have PRA symbol.
     meta = None
     if any([limutils.check_pra_symbol(x) for x in scall]):
-        meta = relations(scall, show_columns=True, date_range=True)
+        meta = relations(*scall, show_columns=True, date_range=True)
 
     q = limqueryutils.build_series_query(scall, meta, start_date=start_date)
     res = query(q)
@@ -92,7 +92,7 @@ def curve_formula(
         for d in curve_dates:
             rx = curve_formula(formula, column=column, curve_dates=(d,), matches=matches)
             if rx is not None:
-                rx = rx[[ d.strftime("%Y/%m/%d")]]
+                rx = rx[[d.strftime("%Y/%m/%d")]]
                 dfs.append(rx)
         if len(dfs) > 0:
             res = pd.concat(dfs, 1)
@@ -101,11 +101,11 @@ def curve_formula(
     return res
 
 
-def query_as_curve(query_text: str):
+def query_as_curve(query_text: str) -> pd.DataFrame:
     """
-    Given a LIM query that returns a curve, format the return (drop NaN)
-    :param query:
-    :return:
+    Given a LIM query that returns a curve, format the return (drop NaN).
+
+    :param query: A MorningStar LIM query text.
     """
     df = query(query_text)
     df = df.resample('MS').mean()
@@ -155,52 +155,64 @@ def contracts(
     months: t.Optional[t.Tuple[str, ...]] = None,
     start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
-    matches = find_symbols_in_query(formula)
-    matches_futures_only = [x for x in matches if matches[x] == 'FUTURES']
-    contracts_list = get_symbol_contract_list(matches_futures_only, monthly_contracts_only=True)
+    matched_futures = tuple(
+        symbol for symbol, type in find_symbols_in_query(formula).items() if type == "FUTURES"
+    )
+    contracts_list = get_symbol_contract_list(*matched_futures, monthly_contracts_only=True)
     contracts_list = limutils.filter_contracts(contracts_list, start_year=start_year, end_year=end_year, months=months)
-
-    return _contracts(formula, matches=matches_futures_only, contracts_list=contracts_list, start_date=start_date)
+    return _contracts(formula, matches=matched_futures, contracts_list=contracts_list, start_date=start_date)
 
 
 def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None) -> pd.DataFrame:
     matches = find_symbols_in_query(symbol)
     clause = limqueryutils.extract_clause(symbol)
-
     q = limqueryutils.build_structure_query(clause, matches, mx, my, start_date)
     res = query(q)
     return res
 
 
 def candlestick_data(symbol: str, days: int = 90):
-    q = 'Show Close: Close of %s High: High of %s Low: Low of %s Open: Open of %s when date is within %s days' % (
-    symbol, symbol, symbol, symbol, days)
-    df = query(q)
+    df = query(
+        f'Show Close: Close of {symbol} '
+        f'High: High of {symbol} '
+        f'Low: Low of {symbol} '
+        f'Open: Open of {symbol} '
+        f'when date is within {days} days'
+    )
     return df
 
 
 def relations(
-    symbol: t.Union[str, t.Tuple[str, ...]],
+    *symbols: str,
     show_children: bool = False,
     show_columns: bool = False,
     desc: bool = False,
     date_range: bool = False,
+    shorthand: bool = False,
 ) -> pd.DataFrame:
     """
-    Given a list of symbols call API to get Tree Relations, return as response.
+    Allows you to retrieve schema (metadata) information about MorningStar LIM relations.
+
+    :param symbols: Relation names to retrieve information for.
+    :param show_children: Whether the response provides the immediate child relation information.
+    :param show_columns: Whether the response provides column and relation-column information.
+    :param desc: Whether the response provides the description of each relation node.
+    :param date_range: Whether the response provides data-range dates information for each column.
+    :param shorthand: Whether the response disables field value population for child relations to
+                      accelerate the meta-data fetch process. This flag works only with `show_children=True`.
     """
-    if is_sequence(symbol):
-        symbol = ','.join(set(symbol))
-    url = f'/rs/api/schema/relations/{symbol}'
+    symbols_encoded = ','.join(set(symbols))
+    url = f'/rs/api/schema/relations/{symbols_encoded}'
     params = {
         'showChildren': str(show_children).lower(),
         'showColumns': str(show_columns).lower(),
         'desc': str(desc).lower(),
         'dateRange': str(date_range).lower(),
+        'shorthand': str(shorthand).lower()
     }
     with get_lim_session() as session:
         response = session.get(url, params=params)
-    root = etree.fromstring(response.text.encode('utf-8'))
+    root = etree.fromstring(response.content)
     df = pd.concat([pd.Series(x.values(), index=x.attrib) for x in root], axis=1, sort=False)
     if show_children:
         df = limutils.relinfo_children(df, root)
@@ -220,7 +232,7 @@ def find_symbols_in_path(path: str) -> list:
 
     for col in df.columns:
         children = df[col]['children']
-        for i, row in children.iterrows():
+        for _, row in children.iterrows():
             if row.type == 'FUTURES' or row.type == 'NORMAL':
                 symbols.append(row['name'])
             elif row.type == 'CATEGORY':
@@ -230,13 +242,13 @@ def find_symbols_in_path(path: str) -> list:
 
 
 def get_symbol_contract_list(
-    symbol: t.Union[str, t.Tuple[str, ...]],
+    *symbols: str,
     monthly_contracts_only: bool = False,
 ) -> list:
     """
     Given a symbol pull all futures contracts related to it.
     """
-    response = relations(symbol, show_children=True).T
+    response = relations(*symbols, show_children=True, shorthand=True).T
     response = response[(response.hasChildren == '1') & (pd.notnull(response.children))].T
     children = response.loc['children']
     children = pd.concat(children.values)
@@ -246,18 +258,12 @@ def get_symbol_contract_list(
     return contracts_list
 
 
-def find_symbols_in_query(q: str) -> dict:
-    m = re.findall(r'\w[a-zA-Z0-9_.]+', q)
+def find_symbols_in_query(query: str) -> dict:
+    m = re.findall(r'\w[a-zA-Z0-9_.]+', query)
     if 'Show' in m:
         m.remove('Show')
-    rel = relations(tuple(m)).T
+    rel = relations(*m).T
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
     if len(rel) > 0:
         return rel['type'].to_dict()
-
-
-if __name__ == '__main__':
-    q = 'Show 1: FP/7.45-FB'
-    find_symbols_in_query(q)
-    contracts('NYMEX.CU')
-    # series('PGABM00')
+    return {}
