@@ -84,7 +84,7 @@ def curve_formula(
         res = query(q)
         res = res.resample('MS').mean()
         if isinstance(curve_dates, date):
-            res = res[['1']].rename(columns={'1': curve_dates.strftime("%Y/%m/%d")})
+            res = res.rename(columns={'1': curve_dates.strftime("%Y/%m/%d")})
     else:
         dfs, res = [], None
         if not is_sequence(curve_dates):
@@ -267,3 +267,17 @@ def find_symbols_in_query(query: str) -> dict:
     if len(rel) > 0:
         return rel['type'].to_dict()
     return {}
+
+
+if __name__ == '__main__':
+    q = 'Show 1: FP/7.45-FB'
+    find_symbols_in_query(q)
+    # contracts('NYMEX.CU')
+    # series('PGABM00')
+    fcurves = {
+        'FB': 'Brent',
+        'FP': 'ULSD',
+        'JKM': 'NYMEX.JKM',
+        'C3_PROPANE_CIF_ARA_LGE': 'Propane'
+    }
+    curve(fcurves)
