@@ -28,6 +28,7 @@ def series(symbols: t.Union[str, dict, tuple], start_date: t.Optional[t.Union[st
 
     if isinstance(symbols, dict):
         res = res.rename(columns=symbols)
+        res.attrs['symbolmap'] = {v: k for k, v in symbols.items()}
 
     return res
 
@@ -59,6 +60,7 @@ def curve(
 
     if isinstance(symbols, dict):
         res = res.rename(columns=symbols)
+        res.attrs['symbolmap'] = {v: k for k, v in symbols.items()}
 
     # Reindex dates to start of month.
     if res is not None and len(res) > 0:

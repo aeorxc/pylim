@@ -12,6 +12,7 @@ def test_lim_query():
     assert res is not None
     assert 'FB' in res.columns
     assert 'FP' in res.columns
+    assert res.attrs['query'] == q
 
 
 def test_extended_query():
@@ -71,6 +72,7 @@ def test_series5():
     res = lim.series({'FP_2020J': 'GO', 'FB_2020J': 'Brent'})
     assert res['GO']['2020-01-02'] == 608.5
     assert res['Brent']['2020-01-02'] == 65.56
+    assert res.attrs['symbolmap']['GO'] == 'FP_2020J'
 
 
 def test_curve1():

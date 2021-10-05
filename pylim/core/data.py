@@ -28,10 +28,14 @@ def query(query_text: str) -> pd.DataFrame:
             root = etree.fromstring(response.content)
             status_code = int(root.attrib["status"])
             if status_code == 100:
-                return build_dataframe(root[0])
+                df = build_dataframe(root[0])
+                df.attrs['query'] = query_text
+                return df
             elif status_code == 130:
                 logging.info('No data')
-                return pd.DataFrame()
+                df = pd.DataFrame()
+                df.attrs['query'] = query_text
+                return df
             elif status_code == 200:
                 job_id = int(root.attrib['id'])
                 logging.info(f'Job {job_id} not complete, starting to poll...')
