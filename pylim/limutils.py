@@ -54,7 +54,7 @@ def relinfo_children(df, root):
             namec.name = 'name'
             typec = pd.Series([x.attrib['type'] for x in root[col][0]], dtype='object')
             typec.name = 'type'
-            d = pd.concat([namec, typec], 1)
+            d = pd.concat([namec, typec], axis=1)
             dfs.append(d)
 
     df = df.append(pd.Series(dfs, name='children'))
