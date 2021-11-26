@@ -157,9 +157,17 @@ def test_futures_contracts_formula2():
 
 
 def test_cont_futures_rollover():
-    res = lim.continuous_futures_rollover('FB', months=['M1', 'M12'], after_date=2019)
-    assert res['M1'][pd.to_datetime('2020-01-02')] == 66.25
-    assert res['M12'][pd.to_datetime('2020-01-02')] == 60.94
+    res = lim.continuous_futures_rollover('FB', months=['M1', 'M12'], start_date=date(2020, 1, 1))
+    assert res['FB_M1'][pd.to_datetime('2020-01-02')] == 66.25
+    assert res['FB_M12'][pd.to_datetime('2020-01-02')] == 60.94
+
+
+def test_cont_futures_rollover2():
+    res = lim.continuous_futures_rollover(('FB', 'CL'), months=['M1', 'M12'], start_date=date(2020, 1, 1))
+    assert res['FB_M1'][pd.to_datetime('2020-01-02')] == 66.25
+    assert res['FB_M12'][pd.to_datetime('2020-01-02')] == 60.94
+    assert res['CL_M1'][pd.to_datetime('2020-01-02')] == 61.18
+    assert res['CL_M12'][pd.to_datetime('2020-01-02')] == 56.49
 
 
 def test_structure1():

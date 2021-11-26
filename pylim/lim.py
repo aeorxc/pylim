@@ -116,15 +116,13 @@ def query_as_curve(query_text: str) -> pd.DataFrame:
 
 
 def continuous_futures_rollover(
-    symbol: str,
+    symbol: t.Union[str, tuple],
     months: t.Tuple[str, ...] = ('M1',),
     rollover_date: str = '5 days before expiration day',
-    after_date: t.Optional[date] = None
+    start_date: t.Optional[t.Tuple[str, date]] = None,
 ) -> pd.DataFrame:
-    if after_date is None:
-        after_date = date.today().year - 1
     q = limqueryutils.build_continuous_futures_rollover_query(
-        symbol, months=months, rollover_date=rollover_date, after_date=after_date
+        symbol, months=months, rollover_date=rollover_date, start_date=start_date
     )
     res = query(q)
     return res

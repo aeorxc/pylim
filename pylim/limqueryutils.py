@@ -148,23 +148,26 @@ def build_curve_history_query(
 
 
 def build_continuous_futures_rollover_query(
-    symbol: str,
+    symbols: t.Union[str, tuple],
     months: t.Tuple[str, ...] = ('M1',),
     rollover_date: str = '5 days before expiration day',
-    after_date: t.Optional[int] = None,
+    start_date: t.Optional[t.Tuple[str, date]] = None,
 ) -> str:
-    if after_date is None:
-        after_date = date.today().year - 1
     builder = LimQueryBuilder()
-    builder.add_when(f'Date is after {after_date}')
-    for month in months:
-        m = int(month[1:])
-        if m == 1:
-            rollover_policy = 'actual prices'
-        else:
-            rollover_policy = f'{m} nearby actual prices'
-        builder.add_let(f'M{m} = {symbol}(ROLLOVER_DATE = "{rollover_date}",ROLLOVER_POLICY = "{rollover_policy}")')
-        builder.add_show(f'M{m}: M{m}')
+    if start_date:
+        when = build_when_clause(start_date)
+        builder.add_when(when)
+    if isinstance(symbols, str):
+        symbols = tuple([symbols])
+    for symbol in symbols:
+        for month in months:
+            m = int(month[1:])
+            if m == 1:
+                rollover_policy = 'actual prices'
+            else:
+                rollover_policy = f'{m} nearby actual prices'
+            builder.add_let(f'{symbol}_M{m} = {symbol}(ROLLOVER_DATE = "{rollover_date}",ROLLOVER_POLICY = "{rollover_policy}")')
+            builder.add_show(f'{symbol}_M{m}: {symbol}_M{m}')
     return str(builder)
 
 
