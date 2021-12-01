@@ -51,7 +51,7 @@ class LimQueryBuilder:
 
 def is_formula(symbol: str) -> bool:
     lowercase = symbol.lower()
-    return lowercase.startswith("show") or lowercase.startswith("let")
+    return lowercase.startswith("show") or lowercase.startswith("let") or lowercase.startswith('%exec')
 
 
 def build_when_clause(start_date: t.Union[str, date]) -> str:
