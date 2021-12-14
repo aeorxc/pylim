@@ -264,8 +264,11 @@ def find_symbols_in_query(query: str) -> dict:
         m.remove('Show')
     rel = relations(*m).T
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
+    rel = rel.sort_values('type') # sort to have futures first which is useful for building queries
     if len(rel) > 0:
-        return rel['type'].to_dict()
+        d = rel['type'].to_dict()
+        d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1])}
+        return d
     return {}
 
 
