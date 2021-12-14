@@ -3,7 +3,7 @@ Logic to interact with /rs/api/datarequests resource.
 """
 import logging
 import time
-import typing as t
+from pylim import limqueryutils
 
 import pandas as pd
 import requests
@@ -18,6 +18,7 @@ endpoint_url = '/rs/api/datarequests'
 
 
 def query(query_text: str) -> pd.DataFrame:
+    query_text = limqueryutils.prepare_query(query_text)
     with get_lim_session() as session:
         response = session.post(
             endpoint_url,

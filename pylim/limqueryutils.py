@@ -49,6 +49,14 @@ class LimQueryBuilder:
         )
 
 
+def prepare_query(query: str) -> str:
+    if '%exec' in query:
+        query = query.replace('LET', '\nLET')
+        query = query.replace('Show', '\nShow')
+
+    return query
+
+
 def is_formula(symbol: str) -> bool:
     lowercase = symbol.lower()
     return lowercase.startswith("show") or lowercase.startswith("let") or lowercase.startswith('%exec')
