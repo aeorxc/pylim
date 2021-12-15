@@ -1,7 +1,8 @@
 from datetime import date
-import requests
+
 import pandas as pd
 import pytest
+import requests
 
 from pylim import lim
 
@@ -119,6 +120,13 @@ def test_curve_formula2():
     assert '2020/04/04' in res.columns
     assert res['2020/02/02']['2020-05-01'] == 10.929
     assert res['2020/04/04']['2020-08-01'] == 8.50930
+
+
+def test_curve_formula_with_spot():
+    cd = (pd.to_datetime('2020-02-02'), pd.to_datetime('2020-04-04'))
+    res = lim.curve_formula(formula='Show 1: FP/7.45-FB + GBPUSD', curve_dates=cd)
+    assert res['2020/02/02']['2020-04-01'].round(4) == 12.0663
+    assert res['2020/04/04']['2020-06-01'].round(4) == 9.4879
 
 
 def test_symbol_contracts1():

@@ -85,6 +85,13 @@ def curve_formula(
         q = limqueryutils.build_curve_query(symbols=matches, curve_date=curve_dates, column=column, curve_formula_str=formula)
         res = query(q)
         res = res.resample('MS').mean()
+        # lim query language can't calculate a formula with a forward curve and spot value
+        # to get past this, calculate the formula result using eval(), given a dataframe of formula components
+        if 'NORMAL' in matches.values():
+            p = formula.replace("Show 1:", "")
+            for symbol in find_symbols_in_query(p):
+                p = re.sub(fr"\b{symbol}\b", fr"x.{symbol}", p)
+            res['1'] = res.apply(lambda x: eval(p), axis=1)
         if isinstance(curve_dates, date):
             res = res.rename(columns={'1': curve_dates.strftime("%Y/%m/%d")})
     else:
