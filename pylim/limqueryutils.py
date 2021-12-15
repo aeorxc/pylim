@@ -116,19 +116,24 @@ def build_curve_query(
 
     for symbol in symbols:
         if symbols[symbol] == 'FUTURES':
-            builder.add_let(f'ATTR x{symbol} = forward_curve({symbol},"{column}","{curve_date_filter}","","","days","",0 day ago)')
-            builder.add_show(f'{symbol}: x{symbol}')
-            builder.add_when(f'x{symbol} is DEFINED')
+            builder.add_let(f'ATTR @{symbol} = forward_curve({symbol},"{column}","{curve_date_filter}","","","days","",0 day ago)')
+            builder.add_show(f'{symbol}: @{symbol}')
+            builder.add_when(f'@{symbol} is DEFINED')
         else:
-            builder.add_let(f'ATTR x{symbol} = if x{reference_symbol} is defined then {symbol} ENDIF')
-            builder.add_show(f'{symbol}: x{symbol}')
+            builder.add_let(f'ATTR @{symbol} = if {symbol} is defined then {symbol} else {symbol} on previous {{{symbol} is defined}} ENDIF')
+            builder.add_show(f'{symbol}: @{symbol}')
     builder.whens_to_or()
 
     if curve_formula_str is not None:
         if 'Show' in curve_formula_str or 'show' in curve_formula_str:
             curve_formula_str = curve_formula_str.replace('Show', '').replace('show', '')
+        # Lim query language can't have a formula mixing forward curves and spot values.
+        # So we can only return a dataframe with the relevant figures and calculate the formula afterwards
         for symbol in symbols:
-            curve_formula_str = re.sub(r'\b%s\b' % symbol, r'x%s' % symbol, curve_formula_str)
+            if symbols[symbol] == 'FUTURES':
+                curve_formula_str = re.sub(r'\b%s\b' % symbol, r'@%s' % symbol, curve_formula_str)
+            else:
+                curve_formula_str = re.sub(r'\b%s\b' % symbol, r'0', curve_formula_str)
         builder.add_show(curve_formula_str)
 
     # When no curve date is specified we get a full history so filter it.

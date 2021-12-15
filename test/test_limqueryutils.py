@@ -27,22 +27,23 @@ def test_build_build_curve_query():
     column = 'Close'
     curve_dates = pd.to_datetime('2020-05-01')
     res = limqueryutils.build_curve_query(symbols=matches, curve_date=curve_dates, column=column,
-                                        curve_formula_str=formula)
+                                          curve_formula_str=formula)
 
-    assert 'ATTR xFP = forward_curve(FP,"Close","05/01/2020","","","days","",0 day ago)' in res
-    assert 'ATTR xFB = forward_curve(FB,"Close","05/01/2020","","","days","",0 day ago)' in res
-    assert '1: xFP/7.45-xFB' in res
+    assert 'ATTR @FP = forward_curve(FP,"Close","05/01/2020","","","days","",0 day ago)' in res
+    assert 'ATTR @FB = forward_curve(FB,"Close","05/01/2020","","","days","",0 day ago)' in res
+    assert '1: @FP/7.45-@FB' in res
 
 
 def test_build_build_curve_query_mix_types():
-    matches = {'FP': 'FUTURES', 'FB': 'FUTURES', 'GBPUSD' : 'NORMAL'}
-    formula = 'Show 1: FP/7.45-FB + USDGBP'
+    matches = {'FP': 'FUTURES', 'FB': 'FUTURES', 'GBPUSD': 'NORMAL'}
+    formula = 'Show 1: FP/7.45-FB + GBPUSD'
     column = 'Close'
     curve_dates = pd.to_datetime('2020-05-01')
     res = limqueryutils.build_curve_query(symbols=matches, curve_date=curve_dates, column=column,
-                                        curve_formula_str=formula)
+                                          curve_formula_str=formula)
 
-    assert 'ATTR xFP = forward_curve(FP,"Close","05/01/2020","","","days","",0 day ago)' in res
-    assert 'ATTR xFB = forward_curve(FB,"Close","05/01/2020","","","days","",0 day ago)' in res
-    assert 'ATTR xGBPUSD = if xFP is defined then GBPUSD ENDIF' in res
-    assert '1: xFP/7.45-xFB + USDGBP' in res
+    assert 'ATTR @FP = forward_curve(FP,"Close","05/01/2020","","","days","",0 day ago)' in res
+    assert 'ATTR @FB = forward_curve(FB,"Close","05/01/2020","","","days","",0 day ago)' in res
+    assert 'ATTR @GBPUSD = if GBPUSD is defined then GBPUSD else GBPUSD on previous {GBPUSD is defined} ENDIF' in res
+    assert '1: @FP/7.45-@FB + 0' in res
+
