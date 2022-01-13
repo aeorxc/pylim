@@ -1,0 +1,1 @@
+from pylim import us_crude_utilsdef test_cal_tmf_series():    df = us_crude_utils.cal_tmf_series('PA0004066.2', start_year=2019)    assert df.loc['2021-01-01', 'TMF'] == 1.8
