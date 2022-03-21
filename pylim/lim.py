@@ -5,8 +5,8 @@ from datetime import date
 import pandas as pd
 from lxml import etree
 
-from pylim import limutils
 from pylim import limqueryutils
+from pylim import limutils
 from pylim.core import get_lim_session, query
 from pylim.limutils import is_sequence
 
@@ -34,9 +34,9 @@ def series(symbols: t.Union[str, dict, tuple], start_date: t.Optional[t.Union[st
 
 
 def curve(
-    symbols: t.Union[str, dict, tuple],
-    column: str = 'Close',
-    curve_dates: t.Optional[t.Union[date, t.Tuple[date, ...]]] = None,
+        symbols: t.Union[str, dict, tuple],
+        column: str = 'Close',
+        curve_dates: t.Optional[t.Union[date, t.Tuple[date, ...]]] = None,
 ) -> pd.DataFrame:
     scall = symbols
     if isinstance(scall, str):
@@ -55,7 +55,7 @@ def curve(
             curve_date = curve_dates[0]
         else:
             curve_date = curve_dates
-        q = limqueryutils.build_curve_query({x:'FUTURES' for x in scall}, curve_date, column)
+        q = limqueryutils.build_curve_query({x: 'FUTURES' for x in scall}, curve_date, column)
     res = query(q)
 
     if isinstance(symbols, dict):
@@ -69,10 +69,10 @@ def curve(
 
 
 def curve_formula(
-    formula: str,
-    column: str = 'Close',
-    curve_dates: t.Optional[t.Tuple[date, ...]] = None,
-    matches: t.Optional[t.Tuple[str, ...]] = None
+        formula: str,
+        column: str = 'Close',
+        curve_dates: t.Optional[t.Tuple[date, ...]] = None,
+        matches: t.Optional[t.Tuple[str, ...]] = None
 ) -> pd.DataFrame:
     """
     Calculate a forward curve using existing symbols.
@@ -82,7 +82,8 @@ def curve_formula(
     if curve_dates is None or (is_sequence(curve_dates) and len(curve_dates) == 1):
         if is_sequence(curve_dates):
             curve_dates = curve_dates[0]
-        q = limqueryutils.build_curve_query(symbols=matches, curve_date=curve_dates, column=column, curve_formula_str=formula)
+        q = limqueryutils.build_curve_query(symbols=matches, curve_date=curve_dates, column=column,
+                                            curve_formula_str=formula)
         res = query(q)
         res = res.resample('MS').mean()
         # lim query language can't calculate a formula with a forward curve and spot value
@@ -123,10 +124,10 @@ def query_as_curve(query_text: str) -> pd.DataFrame:
 
 
 def continuous_futures_rollover(
-    symbol: t.Union[str, tuple],
-    months: t.Tuple[str, ...] = ('M1',),
-    rollover_date: str = '5 days before expiration day',
-    start_date: t.Optional[t.Tuple[str, date]] = None,
+        symbol: t.Union[str, tuple],
+        months: t.Tuple[str, ...] = ('M1',),
+        rollover_date: str = '5 days before expiration day',
+        start_date: t.Optional[t.Tuple[str, date]] = None,
 ) -> pd.DataFrame:
     q = limqueryutils.build_continuous_futures_rollover_query(
         symbol, months=months, rollover_date=rollover_date, start_date=start_date
@@ -136,10 +137,10 @@ def continuous_futures_rollover(
 
 
 def _contracts(
-    formula: str,
-    matches: t.Tuple[str, ...],
-    contracts_list: t.Tuple[str, ...],
-    start_date: t.Optional[date] = None,
+        formula: str,
+        matches: t.Tuple[str, ...],
+        contracts_list: t.Tuple[str, ...],
+        start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
     s = []
     for match in matches:
@@ -156,11 +157,11 @@ def _contracts(
 
 
 def contracts(
-    formula: str,
-    start_year: t.Optional[int] = None,
-    end_year: t.Optional[int] = None,
-    months: t.Optional[t.Tuple[str, ...]] = None,
-    start_date: t.Optional[date] = None,
+        formula: str,
+        start_year: t.Optional[int] = None,
+        end_year: t.Optional[int] = None,
+        months: t.Optional[t.Tuple[str, ...]] = None,
+        start_date: t.Optional[date] = None,
 ) -> pd.DataFrame:
     matched_futures = tuple(
         symbol for symbol, type in find_symbols_in_query(formula).items() if type == "FUTURES"
@@ -178,24 +179,30 @@ def structure(symbol: str, mx: int, my: int, start_date: t.Optional[date] = None
     return res
 
 
-def candlestick_data(symbol: str, days: int = 90):
-    df = query(
-        f'Show Close: Close of {symbol} '
-        f'High: High of {symbol} '
-        f'Low: Low of {symbol} '
-        f'Open: Open of {symbol} '
-        f'when date is within {days} days'
-    )
+def candlestick_data(symbol: str, days: int = 90, additional_columns: tuple = None):
+    q = """Show Close: Close of {symbol}   
+High: High of {symbol} 
+Low: Low of {symbol}
+Open: Open of {symbol}
+"""
+    q = q.replace('{symbol}', symbol)
+
+    if additional_columns:
+        for additional_column in additional_columns:
+            q += f'{additional_column}: {additional_column} of {symbol} '
+
+    q += f'when date is within {days} days'
+    df = query(q)
     return df
 
 
 def relations(
-    *symbols: str,
-    show_children: bool = False,
-    show_columns: bool = False,
-    desc: bool = False,
-    date_range: bool = False,
-    shorthand: bool = False,
+        *symbols: str,
+        show_children: bool = False,
+        show_columns: bool = False,
+        desc: bool = False,
+        date_range: bool = False,
+        shorthand: bool = False,
 ) -> pd.DataFrame:
     """
     Allows you to retrieve schema (metadata) information about MorningStar LIM relations.
@@ -249,8 +256,8 @@ def find_symbols_in_path(path: str) -> list:
 
 
 def get_symbol_contract_list(
-    *symbols: str,
-    monthly_contracts_only: bool = False,
+        *symbols: str,
+        monthly_contracts_only: bool = False,
 ) -> list:
     """
     Given a symbol pull all futures contracts related to it.
@@ -271,7 +278,7 @@ def find_symbols_in_query(query: str) -> dict:
         m.remove('Show')
     rel = relations(*m).T
     rel = rel[rel['type'].isin(['FUTURES', 'NORMAL'])]
-    rel = rel.sort_values('type') # sort to have futures first which is useful for building queries
+    rel = rel.sort_values('type')  # sort to have futures first which is useful for building queries
     if len(rel) > 0:
         d = rel['type'].to_dict()
         d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1])}

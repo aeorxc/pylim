@@ -198,8 +198,8 @@ def test_structure4():
     assert res['M1-M12'][pd.to_datetime('2020-01-02')] == pytest.approx(-1.18, abs=0.01)
 
 
-def test_structure():
-    res = lim.candlestick_data('FB')
+def test_candlestickdata():
+    res = lim.candlestick_data('FB', additional_columns=('OpenInterest',), days=10)
     assert isinstance(res, pd.DataFrame)
 
 
