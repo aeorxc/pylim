@@ -237,7 +237,7 @@ def relations(
     return df
 
 
-def find_symbols_in_path(path: str) -> list:
+def find_symbols_in_path(path: str, type:str=None) -> list:
     """
     Given a path in the LIM tree hierarchy, find all symbols in that path.
     """
@@ -247,11 +247,15 @@ def find_symbols_in_path(path: str) -> list:
     for col in df.columns:
         children = df[col]['children']
         for _, row in children.iterrows():
-            if row.type == 'FUTURES' or row.type == 'NORMAL':
-                symbols.append(row['name'])
-            elif row.type == 'CATEGORY':
-                rec_symbols = find_symbols_in_path(f'{path}:{row["name"]}')
-                symbols = symbols + rec_symbols
+            if type is not None:
+                if row.type == type:
+                    symbols.append(row['name'])
+            else:
+                if row.type == 'FUTURES' or row.type == 'NORMAL':
+                    symbols.append(row['name'])
+            if row.type == 'CATEGORY':
+                    rec_symbols = find_symbols_in_path(f'{path}:{row["name"]}', type=type)
+                    symbols = symbols + rec_symbols
     return symbols
 
 
@@ -287,14 +291,17 @@ def find_symbols_in_query(query: str) -> dict:
 
 
 if __name__ == '__main__':
-    q = 'Show 1: FP/7.45-FB'
-    find_symbols_in_query(q)
-    # contracts('NYMEX.CU')
-    # series('PGABM00')
-    fcurves = {
-        'FB': 'Brent',
-        'FP': 'ULSD',
-        'JKM': 'NYMEX.JKM',
-        'C3_PROPANE_CIF_ARA_LGE': 'Propane'
-    }
-    curve(fcurves)
+    # q = 'Show 1: FP/7.45-FB'
+    # find_symbols_in_query(q)
+    # # contracts('NYMEX.CU')
+    # # series('PGABM00')
+    # fcurves = {
+    #     'FB': 'Brent',
+    #     'FP': 'ULSD',
+    #     'JKM': 'NYMEX.JKM',
+    #     'C3_PROPANE_CIF_ARA_LGE': 'Propane'
+    # }
+    # curve(fcurves)
+    contracts(formula='Show 1: FP/7.45-FB', months=['F'], start_year=2020, start_date='2020-01-01')
+
+
