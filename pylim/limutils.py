@@ -139,7 +139,7 @@ def filter_contracts(contracts: t.Tuple[str, ...], start_year: int=None, end_yea
     Given list of contracts (eg FB_2020G) filter by start/end year and month.
     """
     if start_year is not None:
-        contracts = [x for x in contracts if start_year <= int(x.split('_')[-1][:4])]
+        contracts = [x for x in contracts if '_' in x and len(x.split('_')[-1]) >= 4 and x.split('_')[-1][:4].isdigit() and start_year <= int(x.split('_')[-1][:4])]
     if end_year is not None:
         contracts = [x for x in contracts if int(x.split('_')[-1][:4]) <= end_year]
     if months is not None:

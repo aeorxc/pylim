@@ -162,11 +162,12 @@ def contracts(
         end_year: t.Optional[int] = None,
         months: t.Optional[t.Tuple[str, ...]] = None,
         start_date: t.Optional[date] = None,
+        monthly_contracts_only:bool = True,
 ) -> pd.DataFrame:
     matched_futures = tuple(
         symbol for symbol, type in find_symbols_in_query(formula).items() if type == "FUTURES"
     )
-    contracts_list = get_symbol_contract_list(*matched_futures, monthly_contracts_only=True)
+    contracts_list = get_symbol_contract_list(*matched_futures, monthly_contracts_only=monthly_contracts_only)
     contracts_list = limutils.filter_contracts(contracts_list, start_year=start_year, end_year=end_year, months=months)
     return _contracts(formula, matches=matched_futures, contracts_list=contracts_list, start_date=start_date)
 
