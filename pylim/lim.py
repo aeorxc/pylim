@@ -278,7 +278,7 @@ def get_symbol_contract_list(
 
 
 def find_symbols_in_query(query: str) -> dict:
-    m = re.findall(r'\w[a-zA-Z0-9_.]+', query)
+    m = re.findall(r'\w[a-zA-Z0-9_.]{0,}', query)
     if 'Show' in m:
         m.remove('Show')
     rel = relations(*m).T
